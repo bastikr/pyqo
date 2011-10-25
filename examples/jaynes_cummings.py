@@ -3,11 +3,11 @@ qo = imp.load_module("pyqo", *imp.find_module("pyqo", [".."]))
 import numpy as np
 
 N = 10 # dimension of field Hilbert space
-δ_c = 1
-δ_a = 2
+delta_c = 1
+delta_a = 2
 g = 1
-γ = 0.1
-κ = 0.1
+gamma = 0.1
+kappa = 0.1
 
 # Field
 id_f = qo.identity(N)
@@ -17,22 +17,23 @@ n = qo.number(N)
 
 # Atom
 id_a = qo.identity(2)
-σ_p = qo.sigmap
-σ_m = qo.sigmam
 
 # Initial state
-ψ_0 = qo.basis(N,0) ^ qo.basis(2,1)
+psi_0 = qo.basis(N,0) ^ qo.basis(2,1)
 
 # Hamiltonian
-H = δ_c*(at*a^id_a) + δ_a*(id_f^σ_p*σ_m) + g*(a^σ_p) + g*(at^σ_m)
+H = delta_c*(at*a^id_a)\
+    + delta_a*(id_f^qo.sigmap*qo.sigmam)\
+    + g*(a^qo.sigmap) + g*(at^qo.sigmam)
 
 # Solve Master equation
 T = np.linspace(0, 2*np.pi, 30)
-ρ = qo.solve_ode(H, ψ_0, T, [γ**(1/2)*(id_f^σ_m), κ**(1/2)*(a^id_a)])
+rho = qo.solve_ode(H, psi_0, T,
+        [gamma**(1/2)*(id_f^qo.sigmam), kappa**(1/2)*(a^id_a)])
 
 # Expectation values
-n_exp = qo.expect(n^id_a, ρ)
-e_exp = qo.expect(id_f^σ_p*σ_m, ρ)
+n_exp = qo.expect(n^id_a, rho)
+e_exp = qo.expect(id_f^qo.sigmap*qo.sigmam, rho)
 
 # Q-function
 x = np.linspace(-4,4,40)
@@ -54,13 +55,13 @@ pylab.plot(T, e_exp)
 pylab.show()
 
 Q = []
-for ρ_t in ρ:
-    ρ_f = qo.ptrace(ρ_t,1)
-    Q.append(np.abs(qo.qfunc(ρ_f,X,Y)))
+for rho_t in rho:
+    rho_f = qo.ptrace(rho_t,1)
+    Q.append(np.abs(qo.qfunc(rho_f,X,Y)))
 
 def qplot(fig,step):
     axes = fig.add_subplot(111)
     axes.clear()
     axes.imshow(Q[step])
 
-qo.animate(len(ρ), qplot)
+qo.animate(len(rho), qplot)
