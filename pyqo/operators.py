@@ -7,7 +7,10 @@ from . import statevector
 from . import bases
 from . import utils
 
-class Operator(ndarray.Array):
+class BaseOperator:
+    pass
+
+class Operator(ndarray.Array, BaseOperator):
     r"""
     A class representing an operator in a specific basis.
 
@@ -200,7 +203,7 @@ def qfunc(state, X, Y):
             c = state.basis.coherent_scalar_product(a, state.basis.states)
             return numpy.abs(numpy.dot(c, state))**2/numpy.pi
     elif isinstance(state, DensityOperator):
-        assert state.dim == 2
+        assert state.ndim == 2
         @numpy.vectorize
         def Q(a):
             c = state.basis.coherent_scalar_product(a.tolist(), state.basis.states)
