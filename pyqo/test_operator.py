@@ -1,5 +1,7 @@
-import operators as op
 import unittest
+
+from . import operators as op
+
 
 class OperatorTestCase(unittest.TestCase):
     def test_creation(self):
@@ -13,6 +15,11 @@ class OperatorTestCase(unittest.TestCase):
         t = op1 ^ op2
         self.assertEqual(t.shape, (2,3,2,3))
 
+    def test_ptrace(self):
+        x,y,z = op.sigmax, op.sigmay, op.sigmaz
+        I = op.identity(x)
+        self.assertEqual((I^y).ptrace(0).tolist(), (2*y).tolist())
+
     def test_mul(self):
         x,y,z = op.sigmax, op.sigmay, op.sigmaz
         self.assertEqual((x*y).tolist(),
@@ -22,6 +29,3 @@ class OperatorTestCase(unittest.TestCase):
         self.assertEqual(((x^z)*(y^y)).tolist(),
                          ((x*y)^(z*y)).tolist())
 
-
-if __name__ == "__main__":
-    unittest.main()

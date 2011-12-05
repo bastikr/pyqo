@@ -1,6 +1,11 @@
 import numpy
 
-class StateVector(numpy.ndarray):
+from . import ndarray
+from . import bases
+from . import utils
+from . import datatypes
+
+class StateVector(ndarray.Array):
     r"""
     A class representing a state vector in a specific basis.
 
@@ -18,10 +23,6 @@ class StateVector(numpy.ndarray):
         * *data*
             Anything that can be used to create a numpy array, e.g. a nested
             tuple or another numpy array.
-
-        * *norm* (optional)
-            If set True the StateVector will be automatically normalized.
-            (Default is False)
 
         * Any other argument that a numpy array takes. E.g. ``copy=False`` can
           be used so that the StateVector shares the data storage with the
@@ -43,17 +44,28 @@ class StateVector(numpy.ndarray):
     this operator follows the built-in operator precedence - that means "+",
     "*" etc. have **higher** precedence!
     """
-    def __new__(cls, data, norm=False, **kwargs):
-        array = numpy.array(data, dtype=complex, **kwargs)
-        if norm:
-            array = normalize(array)
-        return numpy.asarray(array).view(cls)
+    @staticmethod
+    def _check(array):
+        if array.basis is not None:
+            assert array.basis.rank == len(array.shape)
 
     def __str__(self):
         clsname = self.__class__.__name__
         dims = " x ".join(map(str, self.shape))
         array = numpy.ndarray.__str__(self)
         return "%s(%s)\n%s" % (clsname, dims, array)
+
+    def dual(self):
+        if self.basis is None:
+            return self
+        else:
+            return self.basis.dual(self)
+
+    def inverse_dual(self):
+        if self.basis is None:
+            return self
+        else:
+            return self.basis.inverse_dual(self)
 
     def norm(self):
         r"""
@@ -64,7 +76,12 @@ class StateVector(numpy.ndarray):
             >>> print(sv.norm())
             1.0
         """
-        return numpy.abs(numpy.tensordot(self, self.conj(), len(self.shape)))
+        if self.basis is None:
+            return numpy.sqrt(numpy.abs(
+                        numpy.tensordot(self, self.conj(), len(self.shape))
+                        ))
+        else:
+            return self.basis.norm(self)
 
     def normalize(self):
         r"""
@@ -87,7 +104,7 @@ class StateVector(numpy.ndarray):
         """
         # statevector.py and operators.py have circular import
         from . import operators
-        return operators.Operator(self ^ self.conj())
+        return operators.DensityOperator(self ^ self.conj(), self.basis)
 
     def ptrace(self, indices):
         r"""
@@ -106,15 +123,19 @@ class StateVector(numpy.ndarray):
 
         The result of this method is the same as generating the density
         operator corresponding to the state vector and tracing
-        over the subsystems specified by the given incices.
+        over the subsystems specified by the given indices.
         """
         if isinstance(indices, int):
             a = (indices,)
         else:
-            a = _sorted_list(indices, True)
+            a = utils._sorted_list(indices, True)
         # statevector.py and operators.py have circular import
         from . import operators
-        return operators.Operator(numpy.tensordot(self, self.conj(), (a,a)))
+        dual = self if self.basis is None else self.basis.dual(self)
+        # This calculates the down up version of rho
+        rho_part = numpy.tensordot(self.conj(), dual, (a,a))
+        op = operators.DensityOperator(rho_part, basis=self.basis.ptrace(a))
+        return op.inverse_dual(left=False, right=True)
 
     def tensor(self, other):
         r"""
@@ -141,7 +162,9 @@ class StateVector(numpy.ndarray):
         the same as ``sv1 ^ (sv2 + sv3)``.
         """
         assert isinstance(other, StateVector)
-        return self.__class__(numpy.multiply.outer(self, other))
+        b = bases.compose_bases(self.basis, len(self.shape),
+                        other.basis, len(other.shape))
+        return self.__class__(numpy.multiply.outer(self, other), basis=b)
 
     __xor__ = tensor
 
@@ -156,25 +179,6 @@ def _dim2str(dimensions):
     for d in dimensions:
         dims.append("(%s,%s)" % d)
     return " x ".join(dims)
-
-def _conjugate_indices(indices, ndim):
-    """
-    Return all numbers from 0 to ndim which are not in indices.
-    """
-    if isinstance(indices, int):
-        indices = (indices,)
-    return set(range(ndim)).difference(indices)
-
-def _sorted_list(iterable, reverse=False):
-    """
-    Transform an iterable to a sorted list.
-    """
-    a = list(iterable)
-    a.sort()
-    if reverse:
-        a.reverse()
-    return a
-
 
 # Functions creating commonly used state vectors.
 
@@ -202,7 +206,7 @@ def zero(x):
     else:
         return StateVector(numpy.zeros(x))
 
-def basis(x, index):
+def basis_vector(x, index):
     """
     Creates a StateVector of a shape defined by x where only one entry is 1.
 

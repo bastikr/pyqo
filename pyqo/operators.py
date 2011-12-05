@@ -1,8 +1,13 @@
 from functools import reduce
+import itertools
 import numpy
-from . import statevector
 
-class Operator(numpy.ndarray):
+from . import ndarray
+from . import statevector
+from . import bases
+from . import utils
+
+class Operator(ndarray.Array):
     r"""
     A class representing an operator in a specific basis.
 
@@ -19,14 +24,12 @@ class Operator(numpy.ndarray):
           be used so that the Operator shares the data storage with the
           given numpy array.
     """
-    def __new__(cls, data, **kwargs):
-        array = numpy.array(data, dtype=complex, **kwargs)
+    @staticmethod
+    def _check(array):
         shape = array.shape
         rank = len(shape)
         if rank%2 != 0 or shape[:(rank//2)] != shape[(rank//2):]:
-            raise ValueError("Operators map from H->H and therefor must"
-                             "be square!")
-        return numpy.asarray(array).view(cls)
+            raise ValueError("Operators must be square!")
 
     def __str__(self):
         clsname = self.__class__.__name__
@@ -34,6 +37,33 @@ class Operator(numpy.ndarray):
         dims = " x ".join(map(str, self.shape[:rank//2]))
         array = numpy.ndarray.__str__(self)
         return "%s\n%s -> %s\n%s" % (clsname, dims, dims, array)
+
+    def _apply(self, func, left=True, right=True):
+        rank = len(self.shape) // 2
+        dims = map(range, self.shape[:rank])
+        d = self.copy()
+        if left:
+            for comb in itertools.product(*dims):
+                slice = (Ellipsis,)*rank + comb
+                d[slice] = func(d[slice])
+        d_H = d.H
+        if right:
+            for comb in itertools.product(*dims):
+                slice = (Ellipsis,)*rank + comb
+                d[slice] = func(d_H[slice])
+        return d
+
+    def dual(self, left=True, right=True):
+        if self.basis is None:
+            return self
+        else:
+            return self._apply(self.basis.dual, left, right)
+
+    def inverse_dual(self, left=True, right=True):
+        if self.basis is None:
+            return self
+        else:
+            return self._apply(self.basis.inverse_dual, left, right)
 
     @property
     def T(self):
@@ -44,6 +74,22 @@ class Operator(numpy.ndarray):
     @property
     def H(self):
         return self.T.conj()
+
+    def ptrace(self, indices):
+        if isinstance(indices, int):
+            indices = (indices,)
+        else:
+            indices = utils._sorted_list(indices, True)
+        rank = len(self.shape)//2
+        assert indices[-1] < rank
+        mixed = self.inverse_dual(left=True, right=False)
+        for i in indices:
+            mixed = mixed.trace(axis1=i, axis2=i + len(mixed.shape)//2)
+        if self.basis is None:
+            b = None
+        else:
+            b = self.basis.ptrace(indices)
+        return self.__class__(mixed, basis=b).dual(left=True, right=False)
 
     def tensor(self, array):
         if not isinstance(array, Operator):
@@ -56,28 +102,53 @@ class Operator(numpy.ndarray):
         R = lambda a,b:tuple(range(a,b))
         perm = R(0,m) + R(rank1, rank1+n) + \
                R(m, rank1) + R(rank1+n,rank1+rank2)
-        return Operator(numpy.transpose(op, perm), copy=False)
+        b = bases.compose_bases(self.basis, rank1, array.basis, rank2)
+        return Operator(numpy.transpose(op, perm), basis=b, copy=False)
 
     __xor__ = tensor
 
     def __mul__(self, other):
-        if isinstance(other, Operator):
-            if self.shape == other.shape or self.shape == other.shape*2:
-                rank = len(self.shape)
-                return self.__class__(numpy.tensordot(self,other,rank//2))
-            elif self.shape*2 == other.shape:
-                rank = len(self.shape)
-                return self.__class__(numpy.tensordot(self,other,rank))
-            else:
-                raise ValueError("Operators are dimensional incompatible")
+        if isinstance(other, DensityOperator):
+            if self.shape != other.shape:
+                raise ValueError("Dimensions incompatible!")
+            if self.basis != other.basis:
+                raise ValueError("Bases incompatible!")
+            rank = len(self.shape)
+            return other.__class__(numpy.tensordot(self, other, rank//2),
+                    basis=self.basis)
+        elif isinstance(other, Operator):
+            if self.shape != other.shape:
+                raise ValueError("Dimensions incompatible!")
+            if self.basis != other.basis:
+                raise ValueError("Bases incompatible!")
+            rank = len(self.shape)
+            return self.__class__(numpy.tensordot(self, other, rank//2),
+                    basis=self.basis)
         elif isinstance(other, statevector.StateVector):
             if self.shape != other.shape*2:
                 raise ValueError("Operator and state vector are dimensional"
                                  "incompatible")
+            if self.basis != other.basis:
+                raise ValueError("Bases incompatible!")
             rank = len(self.shape)
-            return other.__class__(numpy.tensordot(self,other,rank//2))
+            return other.__class__(numpy.tensordot(self,other,rank//2),
+                    basis=self.basis)
         else:
             return numpy.ndarray.__mul__(self, other)
+
+
+class DensityOperator(Operator):
+    def ptrace_do(self, indices):
+        if isinstance(indices, int):
+            indices = (indices,)
+        else:
+            indices = utils._sorted_list(indices, True)
+        rank = len(shape)//2
+        assert indices[-1] < rank
+        mixed = self.dual(left=True, right=False)
+        for i in indices[::-1]:
+            mixed = mixed.trace(axis1=i, axis2=i + len(mixed.shape)//2)
+        return mixed.inverse_dual(left=True, right=False)
 
 
 sigmax = Operator( ((0,1),(1,0)) )
@@ -119,31 +190,25 @@ def liouvillian(H, J=()):
         L += spre(j)*spost(j.H) - spost(n) - spre(n)
     return L
 
-def ptrace(op, indices):
-    n = len(op.shape)//2
-    if isinstance(indices, int):
-        indices = (indices,)
-    for i in indices:
-        assert 0<=i<n
-        op = op.trace(axis1=i, axis2=i+n)
-    return Operator(op)
-
-def qfunc(state, X, Y, g=2**(1/2)):
+def qfunc(state, X, Y):
     rank = len(state.shape)
     n = state.shape[0]
-    if rank == 1:
+    if isinstance(state, statevector.StateVector):
+        assert state.ndim == 1
         @numpy.vectorize
         def Q(a):
-            c = statevector.coherent(n,a)
-            return numpy.abs(numpy.dot(c.conj(), state))**2
-    if rank == 2:
+            c = state.basis.coherent_scalar_product(a, state.basis.states)
+            return numpy.abs(numpy.dot(c, state))**2/numpy.pi
+    elif isinstance(state, DensityOperator):
+        assert state.dim == 2
         @numpy.vectorize
         def Q(a):
-            c = statevector.coherent(n,a)
-            return numpy.dot(c.conj(), numpy.dot(state,c))
+            c = state.basis.coherent_scalar_product(a.tolist(), state.basis.states)
+            c = statevector.StateVector(c)
+            return numpy.dot(c.conj(), numpy.dot(state,c))/numpy.pi
     else:
         ValueError("The given state has a too high rank.")
-    alpha = g*(numpy.array(X) + 1j*numpy.array(Y))/2
+    alpha = (numpy.array(X) + 1j*numpy.array(Y))
     return Q(alpha)
 
 
