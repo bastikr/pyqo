@@ -12,6 +12,10 @@ class Array(numpy.ndarray):
         #    kwargs["dtype"] = DEFAULT_DTYPE[0]
         #print("__new__ dtype:", kwargs["dtype"])
         array = numpy.array(data, **kwargs)
+        if array.dtype in (numpy.float16, numpy.float32,
+                                    numpy.float64, numpy.float128):
+            kwargs["dtype"] = complex
+            array = numpy.array(data, **kwargs)
         array = numpy.asarray(array).view(cls)
         array.basis = basis
         cls._check(array)
