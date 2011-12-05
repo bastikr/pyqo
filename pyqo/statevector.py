@@ -83,6 +83,9 @@ class StateVector(ndarray.Array):
         else:
             return self.basis.norm(self)
 
+    def renorm(self):
+        self /= self.norm()
+
     def normalize(self):
         r"""
         Return a normalized StateVector.
@@ -134,7 +137,8 @@ class StateVector(ndarray.Array):
         dual = self if self.basis is None else self.basis.dual(self)
         # This calculates the down up version of rho
         rho_part = numpy.tensordot(self.conj(), dual, (a,a))
-        op = operators.DensityOperator(rho_part, basis=self.basis.ptrace(a))
+        b = None if self.basis is None else self.basis.ptrace(a)
+        op = operators.DensityOperator(rho_part, basis=b)
         return op.inverse_dual(left=False, right=True)
 
     def tensor(self, other):
