@@ -1,5 +1,8 @@
+import random
+
 import numpy
 import scipy.linalg, scipy.integrate
+
 from . import statevector, operators
 
 def as_vector(x):
@@ -14,12 +17,13 @@ def as_matrix(x):
     return x.reshape((dim,dim))
 
 def expect(op, state):
-    # Handle multiple operators/states
+    # Handle multiple operators
     if isinstance(op, (list, tuple)):
         return tuple(map(lambda x:expect(x,state), op))
-    elif isinstance(state, (list,tuple)):
+    # Handle multiple states
+    if isinstance(state, (list,tuple)):
         return tuple(map(lambda x:expect(op,x), state))
-    assert isinstance(op, operators.Operator)
+    assert isinstance(op, operators.BaseOperator)
     # Calculate expectation value for given operator and state
     if isinstance(state, statevector.StateVector):
         return numpy.tensordot(state.conj(), op*state, len(state.shape))
@@ -144,27 +148,179 @@ def solve_ode(H, psi, T, J=None):
             result.append(psi.__class__(integrator.y.reshape(psi.shape)))
         return result
 
-"""
-def solve_mc(H, psi, T, J=None, trajectories=10):
-    N = 0
+class TimeStepError(Exception):
+    new_dt = None
+    def __init__(self, new_dt):
+        self.new_dt = new_dt
+
+class IntegrationState:
+    t = None
+    H = None
+    J = None
+    jumps = None
+    jump_probabilities = None
+    psi = None
+    H_nH = None
+
+    def __init__(self, psi, t):
+        self.psi = psi
+        self.t = t
+        self.t_min = {
+            "adaptive": -float("inf"),
+            "H": -float("inf"),
+            "J": -float("inf"),
+            "jump": None,
+            "T": None}
+        self.t_max = self.t_min.copy()
+
+    def next_t(self):
+        return min(self.t_max.values())
+
+    def copy(self):
+        s = IntegrationState()
+        s.H = self.H
+        s.J = None if self.J is None else self.J.copy()
+        s.t_min = self.t_min.copy()
+        s.t_max = self.t_max.copy()
+        s.psi = self.psi.copy()
+
+
+class TimeStepManager:
+    backup = None
+
+    def __call__(self, state, H, J, T, adaptiveManager, dp_max):
+        # Adapt system
+        if adaptiveManager is None:
+            state.t_min["adaptive"] = float("inf")
+            state.t_max["adaptive"] = float("inf")
+
+        elif t in T or state.t_min["adaptive"] < state.t:
+            dt = None if self.backup is None else t - self.backup.t
+            try:
+                changed, t_min, t_max = adaptiveManager.adapt(dt, state.t, psi, H, J)
+            except TimeStepError as ts_error:
+                state = self.backup.copy()
+                state.t_max["adaptive"] = t_max
+                state.t_min["adaptive"] = t_min
+                return state
+            if changed:
+                self.backup = state.copy()
+                psi = adaptiveManager.adaptStateVector(psi)
+                H, J = adaptiveManager.adaptOperators(H, J)
+            state.t_min["adaptive"] = t_min
+            state.t_max["adaptive"] = t_max
+
+        # Adapt H
+        if state.t_min["H"] < state.t:
+            from . import dynamic_operators
+            if isinstance(H, dynamic_operators.DynamicOperator):
+                state.H = H(t)
+                state.t_min["H"] = H.t_min(t)
+                state.t_max["H"] = H.t_max(t)
+            else:
+                state.H = H
+                state.t_min["H"] = float("inf")
+                state.t_max["H"] = float("inf")
+
+        # Adapt J
+        if J is None:
+            state.t_min["J"] = float("inf")
+            state.t_max["J"] = float("inf")
+        elif state.t_min["J"] < state.t:
+            from . import dynamic_operators
+            state.J = []
+            t_min_J = []
+            t_max_J = []
+            for j in J:
+                # Change J
+                if isinstance(j, dynamic_operators.DynamicOperator):
+                    state.J.append(j(state.t))
+                    t_min_J.append(j.t_min(state.t))
+                    t_max_J.append(H.t_max(state.t))
+                else:
+                    state.J.append(j)
+                    t_min_J.append(float("inf"))
+                    t_max_J.append(float("inf"))
+            state.t_min["J"] = min(t_min_J)
+            state.t_max["J"] = min(t_max_J)
+
+        # Jump
+        if J is None:
+            state.t_min["jump"] = float("inf")
+            state.t_max["jump"] = float("inf")
+        else:
+            jump_results, jump_probabilities = jump(J, state.psi)
+            dt_max = dp_max/jump_probabilities[-1]
+            state.t_max["jump"] = state.t + dt_max
+            state.jumps = jump_results
+            state.jump_probabilities = jump_probabilities
+
+        state.t_max["T"] = T[T>state.t][0]
+        return state
+
+def jump(J, psi):
+    jump_results = []
+    jump_norms = []
     for j in J:
-        N += J.H * J
-    H_nH = H - 1j./2*N
+        jump_results.append(j*psi)
+        jump_norms.append(jump_results[-1].norm()**2)
+    jump_norms = numpy.cumsum(jump_norms)
+    return jump_results, jump_norms
+
+def integrate(H_nH, psi, dt):
     H_nH_ = as_matrix(H_nH)
     psi_ = as_vector(psi)
     def f(t, y):
         return -1j*numpy.dot(H_nH_, y)
     integrator = scipy.integrate.ode(f).set_integrator('zvode')
-    integrator.set_initial_value(psi_, T[0])
-    result = [psi]
-    t0 = T[0]
-    for t in T[1:]:
-        while
-        dt = t-t0
-        integrator.integrate(dt)
-        if not integrator.successful():
-            raise ValueError("Integration went wrong.")
-        result.append(psi.__class__(integrator.y.reshape(psi.shape)))
-    return result
-"""
+    integrator.set_initial_value(psi_, 0)
+    integrator.integrate(dt)
+    if not integrator.successful():
+        raise ValueError("Integration went wrong.")
+    psi[:] = integrator.y.reshape(psi.shape)
+    return psi
+
+def calculate_H_nH(H, J):
+    if J is None:
+        return H
+    N = 0
+    for j in J:
+        N += j.H * j
+    return H - 1j*N/2
+
+def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-7, seed=0):
+    if time_manager is None:
+        time_manager = TimeStepManager()
+    if isinstance(T, (float, int)):
+        T = [0, T]
+        results = []
+    else:
+        results = [psi.copy()]
+    rand_gen = random.Random(seed)
+    state = IntegrationState(psi, T[0])
+    while state.t < T[-1]:
+        # In principle also the last step has to be checked!
+        state = time_manager(state, H, J, T, adapt, dp_max)
+        next_t = state.next_t()
+        rand_number = rand_gen.random()*next_t
+        P = state.jump_probabilities
+        if P is not None and rand_number < P[-1]:
+            # Quantum Jump
+            state.psi = state.jumps[(P<rand_number).sum()]
+        else:
+            # non hermitian time evolution
+            if state.H_nH is None:
+                state.H_nH = calculate_H_nH(H, J)
+            state.psi = integrate(state.H_nH, psi, next_t - state.t)
+        state.t = next_t
+        if state.t in T:
+            results.append(state.psi.copy())
+        state.psi.renorm()
+    return results
+
+def solve_mc(H, psi, T, J=None, trajectories=10):
+    results = []
+    for i in range(trajectories):
+        results.append(solve_mc_single(H_nH, psi_, J))
+    return results
 

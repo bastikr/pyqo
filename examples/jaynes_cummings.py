@@ -19,7 +19,7 @@ n = qo.number(N)
 id_a = qo.identity(2)
 
 # Initial state
-psi_0 = qo.basis(N,0) ^ qo.basis(2,1)
+psi_0 = qo.basis_vector(N,0) ^ qo.basis_vector(2,1)
 
 # Hamiltonian
 H = delta_c*(at*a^id_a)\
@@ -28,7 +28,9 @@ H = delta_c*(at*a^id_a)\
 
 # Solve Master equation
 T = np.linspace(0, 2*np.pi, 30)
-rho = qo.solve_ode(H, psi_0, T,
+#rho = qo.solve_ode(H, psi_0, T,
+#        [gamma**(1/2)*(id_f^qo.sigmam), kappa**(1/2)*(a^id_a)])
+rho = qo.solve_mc_single(H, psi_0, T,
         [gamma**(1/2)*(id_f^qo.sigmam), kappa**(1/2)*(a^id_a)])
 
 # Expectation values
@@ -56,7 +58,7 @@ pylab.show()
 
 Q = []
 for rho_t in rho:
-    rho_f = qo.ptrace(rho_t,1)
+    rho_f = rho_t.ptrace(1)
     Q.append(np.abs(qo.qfunc(rho_f,X,Y)))
 
 def qplot(fig,step):

@@ -10,10 +10,11 @@ H = 1./2*(- Delta * qo.sigmaz\
           + Omega * np.exp(1j*phi) * qo.sigmam\
           + Omega * np.exp(-1j*phi) * qo.sigmap)
 
-psi_0 = qo.basis(2,0)
+psi_0 = qo.basis_vector(2,0)
 
 T = np.linspace(0,2*np.pi,30)
-psi = qo.solve_ode(H, psi_0, T)
+#psi = qo.solve_ode(H, psi_0, T)
+psi = qo.solve_mc_single(H, psi_0, T)
 
 e0 = qo.expect(qo.sigmap*qo.sigmam, psi)
 e1 = qo.expect(qo.sigmam*qo.sigmap, psi)
