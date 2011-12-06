@@ -20,6 +20,13 @@ def expect(op, state):
     # Handle multiple operators
     if isinstance(op, (list, tuple)):
         return tuple(map(lambda x:expect(x,state), op))
+    # Handle multiple trajectories
+    if isinstance(state, Ensemble):
+        result = []
+        N = len(state)
+        for states in zip(*state):
+            result.append(sum(expect(op, states))/N)
+        return tuple(result)
     # Handle multiple states
     if isinstance(state, (list,tuple)):
         return tuple(map(lambda x:expect(op,x), state))
@@ -87,7 +94,7 @@ def _as_density_operator(psi, shape):
     if psi.shape == shape:
         return psi
     elif psi.shape*2 == shape:
-        return operators.Operator(psi^psi.conj())
+        return psi.DO
     else:
         raise ValueError("Psi has uncompatible dimensionality.")
 
@@ -107,19 +114,27 @@ def solve_es(H, psi, T, J=None):
         else:
             raise ValueError("Psi has uncompatible dimensionality.")
 
+def calculate_H_nH(H, J):
+    if J is None:
+        return H
+    N = 0
+    for j in J:
+        N += j.H * j
+    return H - 1j*N/2
+
+
 def solve_ode(H, psi, T, J=None):
     if J:
         dot = numpy.dot
         rho = _as_density_operator(psi, H.shape)
         rho_ = as_vector(rho)
-        H_ = as_matrix(H)
-        def f(t, y):
+        H_nH = as_matrix(calculate_H_nH(H,J))
+        def f(t,y):
             y = as_matrix(y)
-            result = -1j*(dot(H_, y) - dot(y, H_))
+            result = -1j*(dot(H_nH, y) - dot(y, H_nH.H))
             for j in J:
                 j = as_matrix(j)
-                n = j.H * j/2
-                result += dot(j, dot(y, j.H)) - dot(y, n) - dot(n, y)
+                result += dot(j, dot(y, j.H))
             return as_vector(result)
         integrator = scipy.integrate.ode(f).set_integrator('zvode')
         integrator.set_initial_value(rho_,T[0])
@@ -128,7 +143,7 @@ def solve_ode(H, psi, T, J=None):
             integrator.integrate(t)
             if not integrator.successful():
                 raise ValueError("Integration went wrong.")
-            result.append(operators.Operator(integrator.y.reshape(H.shape)))
+            result.append(operators.DensityOperator(integrator.y.reshape(H.shape)))
         return result
     else:
         assert isinstance(psi, statevector.StateVector)
@@ -164,6 +179,7 @@ class IntegrationState:
 
     def __init__(self, psi, t):
         self.psi = psi
+        self.t_last = None
         self.t = t
         self.t_min = {
             "adaptive": -float("inf"),
@@ -180,6 +196,8 @@ class IntegrationState:
         s = IntegrationState()
         s.H = self.H
         s.J = None if self.J is None else self.J.copy()
+        s.t = self.t
+        s.t_last = self.t_last
         s.t_min = self.t_min.copy()
         s.t_max = self.t_max.copy()
         s.psi = self.psi.copy()
@@ -221,6 +239,7 @@ class TimeStepManager:
                 state.H = H
                 state.t_min["H"] = float("inf")
                 state.t_max["H"] = float("inf")
+            state.H_nH = None
 
         # Adapt J
         if J is None:
@@ -241,6 +260,7 @@ class TimeStepManager:
                     state.J.append(j)
                     t_min_J.append(float("inf"))
                     t_max_J.append(float("inf"))
+            state.H_nH = None
             state.t_min["J"] = min(t_min_J)
             state.t_max["J"] = min(t_max_J)
 
@@ -250,7 +270,14 @@ class TimeStepManager:
             state.t_max["jump"] = float("inf")
         else:
             jump_results, jump_probabilities = jump(J, state.psi)
-            dt_max = dp_max/jump_probabilities[-1]
+            if jump_probabilities[-1] == 0:
+                if state.t_last is None:
+                    dt_max = dp_max
+                else:
+                    assert state.t_max["jump"] is not None
+                    dt_max = (state.t_max["jump"] - state.t_last)*1.2
+            else:
+                dt_max = dp_max/jump_probabilities[-1]
             state.t_max["jump"] = state.t + dt_max
             state.jumps = jump_results
             state.jump_probabilities = jump_probabilities
@@ -277,18 +304,9 @@ def integrate(H_nH, psi, dt):
     integrator.integrate(dt)
     if not integrator.successful():
         raise ValueError("Integration went wrong.")
-    psi[:] = integrator.y.reshape(psi.shape)
-    return psi
+    return psi.__class__(integrator.y.reshape(psi.shape), dtype=psi.dtype)
 
-def calculate_H_nH(H, J):
-    if J is None:
-        return H
-    N = 0
-    for j in J:
-        N += j.H * j
-    return H - 1j*N/2
-
-def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-7, seed=0):
+def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-2, seed=0):
     if time_manager is None:
         time_manager = TimeStepManager()
     if isinstance(T, (float, int)):
@@ -302,7 +320,7 @@ def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-
         # In principle also the last step has to be checked!
         state = time_manager(state, H, J, T, adapt, dp_max)
         next_t = state.next_t()
-        rand_number = rand_gen.random()*next_t
+        rand_number = rand_gen.random()/(next_t - state.t)
         P = state.jump_probabilities
         if P is not None and rand_number < P[-1]:
             # Quantum Jump
@@ -311,16 +329,22 @@ def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-
             # non hermitian time evolution
             if state.H_nH is None:
                 state.H_nH = calculate_H_nH(H, J)
-            state.psi = integrate(state.H_nH, psi, next_t - state.t)
+            state.psi = integrate(state.H_nH, state.psi, next_t - state.t)
+        state.psi.renorm()
+        state.t_last = state.t
         state.t = next_t
         if state.t in T:
             results.append(state.psi.copy())
-        state.psi.renorm()
     return results
 
-def solve_mc(H, psi, T, J=None, trajectories=10):
-    results = []
+class Ensemble(list):
+    pass
+
+def solve_mc(H, psi, T, J=None, trajectories=100, seed=0):
+    rand_gen = random.Random(seed)
+    results = Ensemble()
     for i in range(trajectories):
-        results.append(solve_mc_single(H_nH, psi_, J))
+        traj_seed = rand_gen.random()
+        results.append(solve_mc_single(H, psi, T, J, seed=traj_seed))
     return results
 
