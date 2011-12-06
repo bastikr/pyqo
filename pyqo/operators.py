@@ -198,17 +198,31 @@ def qfunc(state, X, Y):
     n = state.shape[0]
     if isinstance(state, statevector.StateVector):
         assert state.ndim == 1
-        @numpy.vectorize
-        def Q(a):
-            c = state.basis.coherent_scalar_product(a, state.basis.states)
-            return numpy.abs(numpy.dot(c, state))**2/numpy.pi
+        if isinstance(state.basis, bases.CoherentBasis):
+            @numpy.vectorize
+            def Q(a):
+                c = state.basis.coherent_scalar_product(a, state.basis.states)
+                return numpy.abs(numpy.dot(c, state))**2/numpy.pi
+        else:
+            @numpy.vectorize
+            def Q(a):
+                N = state.shape[0]
+                c = bases.number_basis.coherent_state(a, N, state.dtype)
+                return (c*a).norm()**2
     elif isinstance(state, DensityOperator):
         assert state.ndim == 2
-        @numpy.vectorize
-        def Q(a):
-            c = state.basis.coherent_scalar_product(a.tolist(), state.basis.states)
-            c = statevector.StateVector(c)
-            return numpy.dot(c.conj(), numpy.dot(state,c))/numpy.pi
+        if isinstance(state.basis, bases.CoherentBasis):
+            @numpy.vectorize
+            def Q(a):
+                c = state.basis.coherent_scalar_product(a.tolist(), state.basis.states)
+                c = statevector.StateVector(c)
+                return numpy.dot(c.conj(), numpy.dot(state,c))/numpy.pi
+        else:
+            @numpy.vectorize
+            def Q(a):
+                N = state.shape[0]
+                c = bases.number_basis.coherent_state(a, N, state.dtype)
+                return numpy.dot(c.conj(), state*c)
     else:
         ValueError("The given state has a too high rank.")
     alpha = (numpy.array(X) + 1j*numpy.array(Y))
