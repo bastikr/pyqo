@@ -19,19 +19,22 @@ n = qo.number(N)
 id_a = qo.identity(2)
 
 # Initial state
-psi_0 = qo.basis_vector(N,0) ^ qo.basis_vector(2,1)
+psi_0 = qo.basis_vector(N,3) ^ qo.basis_vector(2,1)
 
 # Hamiltonian
 H = delta_c*(at*a^id_a)\
     + delta_a*(id_f^qo.sigmap*qo.sigmam)\
     + g*(a^qo.sigmap) + g*(at^qo.sigmam)
 
+# Liouvillian
+j1 = gamma**(1./2)*(id_f^qo.sigmam)
+j2 = kappa**(1./2)*(a^id_a)
+J = [j1, j2]
+
 # Solve Master equation
-T = np.linspace(0, 2*np.pi, 30)
-#rho = qo.solve_ode(H, psi_0, T,
-#        [gamma**(1/2)*(id_f^qo.sigmam), kappa**(1/2)*(a^id_a)])
-rho = qo.solve_mc_single(H, psi_0, T,
-        [gamma**(1/2)*(id_f^qo.sigmam), kappa**(1/2)*(a^id_a)])
+T = np.linspace(0, 4*np.pi, 100)
+rho = qo.solve_ode(H, psi_0, T, J)
+#rho = qo.solve_mc(H, psi_0, T, J, trajectories=100, seed=0)
 
 # Expectation values
 n_exp = qo.expect(n^id_a, rho)
@@ -49,11 +52,11 @@ pylab.figure(1)
 pylab.subplot(211)
 pylab.xlabel("time")
 pylab.ylabel(r"$\langle n \rangle$")
-pylab.plot(T, n_exp)
+pylab.plot(T, np.abs(n_exp))
 pylab.subplot(212)
 pylab.xlabel("time")
 pylab.ylabel(r"$\langle P_1 \rangle$")
-pylab.plot(T, e_exp)
+pylab.plot(T, np.abs(e_exp))
 pylab.show()
 
 Q = []

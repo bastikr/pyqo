@@ -6,7 +6,7 @@ N = 10 # dimension of field Hilbert space
 delta_c = 1
 delta_a = 1
 g = 1
-gamma = 0.2
+gamma = 0.1
 kappa = 0.1
 R = 0.5
 
@@ -20,7 +20,7 @@ n = qo.number(N)
 id_a = qo.identity(2)
 
 # Initial state
-psi_0 = qo.basis(N,0) ^ qo.basis(2,1)
+psi_0 = qo.basis_vector(N,0) ^ qo.basis_vector(2,1)
 
 # Hamiltonian
 H = delta_c*(at*a^id_a) + delta_a*(id_f^qo.sigmap*qo.sigmam) + g*(a^qo.sigmap) + g*(at^qo.sigmam)
@@ -32,8 +32,9 @@ j3 = R**(1./2)*(id_f^qo.sigmap)
 J = [j1, j2, j3]
 
 # Solve Master equation
-T = np.linspace(0, 12*np.pi, 80)
+T = np.linspace(0, 3*np.pi, 20)
 rho = qo.solve_ode(H, psi_0, T, J)
+#rho = qo.solve_mc_single(H, psi_0, T, J, seed=0)
 #rho = qo.solve_es(H, psi_0, T, J)
 
 # Expectation values
@@ -49,7 +50,7 @@ X, Y = np.meshgrid(x,y)
 Q = []
 F = []
 for rho_t in rho:
-    rho_f = qo.ptrace(rho_t,1)
+    rho_f = rho_t.ptrace(1)
     Q.append(np.abs(qo.qfunc(rho_f,X,Y)))
     F.append(np.abs(np.diag(rho_f)))
 
@@ -59,13 +60,13 @@ pylab.figure(1)
 pylab.subplot(211)
 pylab.xlabel("time")
 pylab.ylabel(r"$\langle n \rangle$")
-pylab.plot(T, n_exp)
+pylab.plot(T, np.abs(n_exp))
 pylab.ylim(ymin=0)
 pylab.subplot(212)
 pylab.xlabel("time")
 pylab.ylabel(r"$\langle P_1 \rangle$")
 pylab.ylim((0,1))
-pylab.plot(T, e_exp)
+pylab.plot(T, np.abs(e_exp))
 pylab.show()
 
 from scipy.misc import factorial
