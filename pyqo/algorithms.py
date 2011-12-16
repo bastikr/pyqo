@@ -1,9 +1,14 @@
 import random
 
 import numpy
+try:
+    import mpmath
+except ImportError:
+    mpmath = None
 import scipy.linalg, scipy.integrate
 
 from . import statevector, operators
+from . import rungekutta
 
 def as_vector(x):
     return x.reshape(-1)
@@ -33,7 +38,7 @@ def expect(op, state):
     assert isinstance(op, operators.BaseOperator)
     # Calculate expectation value for given operator and state
     if isinstance(state, statevector.StateVector):
-        return numpy.tensordot(state.conj(), op*state, len(state.shape))
+        return numpy.tensordot(state.conj(), op*state, len(state.shape)).item()
     elif isinstance(state, operators.Operator):
         return as_matrix(op*state).trace()
     else:
@@ -164,12 +169,17 @@ def solve_ode(H, psi, T, J=None):
         return result
 
 class TimeStepError(Exception):
-    new_dt = None
-    def __init__(self, new_dt):
-        self.new_dt = new_dt
+    new_t_min = None
+    new_t_max = None
+    def __init__(self, new_t_min, new_t_max):
+        self.new_t_min = new_t_min
+        self.new_t_max = new_t_max
 
 class IntegrationState:
     t = None
+    t_last = None
+    t_min = None
+    t_max = None
     H = None
     J = None
     jumps = None
@@ -177,10 +187,11 @@ class IntegrationState:
     psi = None
     H_nH = None
 
-    def __init__(self, psi, t):
-        self.psi = psi
-        self.t_last = None
+    def __init__(self, t, psi, H=None, J=None):
         self.t = t
+        self.psi = psi
+        self.H = H
+        self.J = J
         self.t_min = {
             "adaptive": -float("inf"),
             "H": -float("inf"),
@@ -193,40 +204,41 @@ class IntegrationState:
         return min(self.t_max.values())
 
     def copy(self):
-        s = IntegrationState()
+        s = IntegrationState(self.t, self.psi.copy())
         s.H = self.H
         s.J = None if self.J is None else self.J.copy()
-        s.t = self.t
         s.t_last = self.t_last
         s.t_min = self.t_min.copy()
         s.t_max = self.t_max.copy()
-        s.psi = self.psi.copy()
+        return s
 
 
 class TimeStepManager:
     backup = None
 
     def __call__(self, state, H, J, T, adaptiveManager, dp_max):
+        if self.backup is None:
+            self.backup = state.copy()
         # Adapt system
         if adaptiveManager is None:
             state.t_min["adaptive"] = float("inf")
             state.t_max["adaptive"] = float("inf")
-
-        elif t in T or state.t_min["adaptive"] < state.t:
-            dt = None if self.backup is None else t - self.backup.t
+        elif state.t in T or state.t_min["adaptive"] < state.t:
+            t_last = float("NaN") if self.backup.t==state.t else self.backup.t
             try:
-                changed, t_min, t_max = adaptiveManager.adapt(dt, state.t, psi, H, J)
+                basis, t_min, t_max = adaptiveManager.adapt(t_last, state.t, state.psi)
             except TimeStepError as ts_error:
                 state = self.backup.copy()
-                state.t_max["adaptive"] = t_max
+                state.t_max["adaptive"] = ts_error.new_t_max
+                state.t_min["adaptive"] = ts_error.new_t_min
+            else:
                 state.t_min["adaptive"] = t_min
-                return state
-            if changed:
-                self.backup = state.copy()
-                psi = adaptiveManager.adaptStateVector(psi)
-                H, J = adaptiveManager.adaptOperators(H, J)
-            state.t_min["adaptive"] = t_min
-            state.t_max["adaptive"] = t_max
+                state.t_max["adaptive"] = t_max
+                if basis is not None:
+                    state.H, state.J = adaptiveManager.adapt_operators(state.t, basis)
+                    state.H_nH = None
+                    state.psi = adaptiveManager.adapt_statevector(state.psi, basis)
+                    self.backup = state.copy()
 
         # Adapt H
         if state.t_min["H"] < state.t:
@@ -294,7 +306,23 @@ def jump(J, psi):
     jump_norms = numpy.cumsum(jump_norms)
     return jump_results, jump_norms
 
+"""
+def rk4(f, y0, t, h):
+    k1 = h*f(t, y0)
+    k2 = h*f(t+h/2, y0+k1/2)
+    k3 = h*f(t+h/2, y0+k2/2)
+    k4 = h*f(t+h, y0+k3)
+    return y0 + (k1 + 2*k2 + 2*k3 + k4)/6
+"""
+
+def integrate_mp(H_nH, psi, dt):
+    def f(t, y):
+        return -1j*H_nH*y
+    return rungekutta.RK2_3(mpmath.mpf).integrate(f, psi, (0,dt), rtol=1e-6, atol=1e-6)[-1]
+
 def integrate(H_nH, psi, dt):
+    if mpmath is not None isinstance(psi.flat[0], (mpmath.mpc, mpmath.mpf)):
+        return integrate_mp(H_nH, psi, dt)
     H_nH_ = as_matrix(H_nH)
     psi_ = as_vector(psi)
     def f(t, y):
@@ -309,13 +337,9 @@ def integrate(H_nH, psi, dt):
 def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-2, seed=0):
     if time_manager is None:
         time_manager = TimeStepManager()
-    if isinstance(T, (float, int)):
-        T = [0, T]
-        results = []
-    else:
-        results = [psi.copy()]
+    results = [psi.copy()]
     rand_gen = random.Random(seed)
-    state = IntegrationState(psi, T[0])
+    state = IntegrationState(T[0], psi, H, J)
     while state.t < T[-1]:
         # In principle also the last step has to be checked!
         state = time_manager(state, H, J, T, adapt, dp_max)
@@ -328,7 +352,7 @@ def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-
         else:
             # non hermitian time evolution
             if state.H_nH is None:
-                state.H_nH = calculate_H_nH(H, J)
+                state.H_nH = calculate_H_nH(state.H, state.J)
             state.psi = integrate(state.H_nH, state.psi, next_t - state.t)
         state.psi.renorm()
         state.t_last = state.t
