@@ -193,7 +193,7 @@ def liouvillian(H, J=()):
         L += spre(j)*spost(j.H) - spost(n) - spre(n)
     return L
 
-def qfunc(state, X, Y):
+def qfunc(state, X, Y=None):
     rank = len(state.shape)
     n = state.shape[0]
     if isinstance(state, statevector.StateVector):
@@ -208,7 +208,7 @@ def qfunc(state, X, Y):
             def Q(a):
                 N = state.shape[0]
                 c = bases.number_basis.coherent_state(a, N, state.dtype)
-                return (c*a).norm()**2
+                return numpy.abs(numpy.dot(c.conj(), state))**2/numpy.pi
     elif isinstance(state, DensityOperator):
         assert state.ndim == 2
         if isinstance(state.basis, bases.CoherentBasis):
@@ -222,10 +222,10 @@ def qfunc(state, X, Y):
             def Q(a):
                 N = state.shape[0]
                 c = bases.number_basis.coherent_state(a, N, state.dtype)
-                return numpy.dot(c.conj(), state*c)
+                return numpy.dot(c.conj(), state*c)/numpy.pi
     else:
         ValueError("The given state has a too high rank.")
-    alpha = (numpy.array(X) + 1j*numpy.array(Y))
+    alpha = numpy.array(X) if Y is None else (numpy.array(X) + 1j*numpy.array(Y))
     return Q(alpha)
 
 
