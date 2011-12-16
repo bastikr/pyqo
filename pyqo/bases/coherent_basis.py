@@ -7,10 +7,11 @@ import numpy
 try:
     import mpmath
 except:
-    print("mpmath not found - Calculating coherent bases not posible")
+    print("mpmath not found - Calculating coherent bases not possible")
 
 from . import basis
 from .. import ndarray
+from .. import lattice
 
 class CoherentBasis(basis.Basis):
     """
@@ -25,11 +26,16 @@ class CoherentBasis(basis.Basis):
     """
     rank = 1
     states = None
+    lattice = None
     _trafo = None
     _inv_trafo = None
 
     def __init__(self, states):
-        self.states = ndarray.Array(states)
+        if isinstance(states, lattice.Lattice):
+            self.states = ndarray.Array(states.states())
+            self.lattice = states
+        else:
+            self.states = ndarray.Array(states)
 
     @property
     def trafo(self):
@@ -64,7 +70,7 @@ class CoherentBasis(basis.Basis):
         """
         center = mpmath.mpmathify(center)
         d = mpmath.mpf(d)
-        basis = []
+        lat = lattice.HexagonalLattice(d, center, dtype=mpmath.mpf)
         for i in range(-rings,rings+1):
             if i<0:
                 start = -rings-i
@@ -73,8 +79,8 @@ class CoherentBasis(basis.Basis):
                 start = -rings
                 end = rings-i
             for j in range(start,end+1):
-                basis.append(center+d*i+d/2*j+1j*mpmath.sqrt(3)/2*d*j)
-        return CoherentBasis(basis)
+                lat.select((i, j))
+        return CoherentBasis(lat)
 
     @staticmethod
     def coherent_scalar_product(alpha, beta):
@@ -159,7 +165,18 @@ class CoherentBasis(basis.Basis):
         """
         Calculate the coordinates of the given coherent state in this basis.
         """
+        from .. import statevector
         b = self.coherent_scalar_product(self.states, alpha)
-        return self.inverse_dual(b)
+        return statevector.StateVector(self.inverse_dual(b), basis=self)
+
+    def transform_func(self, basis):
+        if isinstance(basis, CoherentBasis):
+            new_states = self.states
+            old_states = basis.states
+            T = CoherentBasis.coherent_scalar_product(new_states, old_states)
+            inv_trafo = self.inv_trafo
+            return lambda psi:numpy.dot(inv_trafo, numpy.dot(T, psi))
+        else:
+            raise NotImplementedError()
 
 
