@@ -321,7 +321,7 @@ def integrate_mp(H_nH, psi, dt):
     return rungekutta.RK2_3(mpmath.mpf).integrate(f, psi, (0,dt), rtol=1e-6, atol=1e-6)[-1]
 
 def integrate(H_nH, psi, dt):
-    if mpmath is not None isinstance(psi.flat[0], (mpmath.mpc, mpmath.mpf)):
+    if mpmath is not None and isinstance(psi.flat[0], (mpmath.mpc, mpmath.mpf)):
         return integrate_mp(H_nH, psi, dt)
     H_nH_ = as_matrix(H_nH)
     psi_ = as_vector(psi)
@@ -358,6 +358,7 @@ def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-
         state.t_last = state.t
         state.t = next_t
         if state.t in T:
+            print(state.t)
             results.append(state.psi.copy())
     return results
 
