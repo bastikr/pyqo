@@ -238,16 +238,15 @@ class TimeStepManager:
                 state.t_max["adaptive"] = ts_error.new_t_max
                 state.t_min["adaptive"] = ts_error.new_t_min
             else:
-                print("Change basis.")
                 state.t_min["adaptive"] = t_min
                 state.t_max["adaptive"] = t_max
                 if basis is not None:
+                    print("Change basis.")
                     state.H, state.J = adaptiveManager.adapt_operators(state.t, basis)
                     state.H_nH = None
                     state.psi = adaptiveManager.adapt_statevector(state.psi, basis)
                     state.jumped = False
                     self.backup = state.copy()
-            print(tuple(j.shape for j in state.J))
 
 
         state.t_min["H"] = float("inf")
