@@ -182,6 +182,7 @@ class IntegrationState:
     t_max = None
     H = None
     J = None
+    jumped = False
     jumps = None
     jump_probabilities = None
     psi = None
@@ -206,7 +207,8 @@ class IntegrationState:
     def copy(self):
         s = IntegrationState(self.t, self.psi.copy())
         s.H = self.H
-        s.J = None if self.J is None else self.J.copy()
+        s.jumped = self.jumped
+        s.J = None if self.J is None else self.J[:]
         s.t_last = self.t_last
         s.t_min = self.t_min.copy()
         s.t_max = self.t_max.copy()
@@ -216,9 +218,11 @@ class IntegrationState:
 class TimeStepManager:
     backup = None
 
-    def __call__(self, state, H, J, T, adaptiveManager, dp_max):
+    def __call__(self, state, T, adaptiveManager, dp_max):
         if self.backup is None:
             self.backup = state.copy()
+
+        was_valid = True
         # Adapt system
         if adaptiveManager is None:
             state.t_min["adaptive"] = float("inf")
@@ -226,20 +230,29 @@ class TimeStepManager:
         elif state.t in T or state.t_min["adaptive"] < state.t:
             t_last = float("NaN") if self.backup.t==state.t else self.backup.t
             try:
-                basis, t_min, t_max = adaptiveManager.adapt(t_last, state.t, state.psi)
+                basis, t_min, t_max = adaptiveManager.adapt(t_last, state.t,
+                                            state.psi, force_adapt=state.jumped)
             except TimeStepError as ts_error:
+                print("Too big change for basis.")
                 state = self.backup.copy()
                 state.t_max["adaptive"] = ts_error.new_t_max
                 state.t_min["adaptive"] = ts_error.new_t_min
             else:
+                print("Change basis.")
                 state.t_min["adaptive"] = t_min
                 state.t_max["adaptive"] = t_max
                 if basis is not None:
                     state.H, state.J = adaptiveManager.adapt_operators(state.t, basis)
                     state.H_nH = None
                     state.psi = adaptiveManager.adapt_statevector(state.psi, basis)
+                    state.jumped = False
                     self.backup = state.copy()
+            print(tuple(j.shape for j in state.J))
 
+
+        state.t_min["H"] = float("inf")
+        state.t_max["H"] = float("inf")
+        """
         # Adapt H
         if state.t_min["H"] < state.t:
             from . import dynamic_operators
@@ -252,7 +265,10 @@ class TimeStepManager:
                 state.t_min["H"] = float("inf")
                 state.t_max["H"] = float("inf")
             state.H_nH = None
-
+        """
+        state.t_min["J"] = float("inf")
+        state.t_max["J"] = float("inf")
+        """
         # Adapt J
         if J is None:
             state.t_min["J"] = float("inf")
@@ -275,13 +291,14 @@ class TimeStepManager:
             state.H_nH = None
             state.t_min["J"] = min(t_min_J)
             state.t_max["J"] = min(t_max_J)
+        """
 
         # Jump
-        if J is None:
+        if state.J is None:
             state.t_min["jump"] = float("inf")
             state.t_max["jump"] = float("inf")
         else:
-            jump_results, jump_probabilities = jump(J, state.psi)
+            jump_results, jump_probabilities = jump(state.J, state.psi)
             if jump_probabilities[-1] == 0:
                 if state.t_last is None:
                     dt_max = dp_max
@@ -293,8 +310,10 @@ class TimeStepManager:
             state.t_max["jump"] = state.t + dt_max
             state.jumps = jump_results
             state.jump_probabilities = jump_probabilities
-
-        state.t_max["T"] = T[T>state.t][0]
+            #print("jump probabilities", jump_probabilities)
+        T_remaining = T[T>state.t]
+        if len(T_remaining)>0:
+            state.t_max["T"] = T_remaining[0]
         return state
 
 def jump(J, psi):
@@ -337,29 +356,37 @@ def integrate(H_nH, psi, dt):
 def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-2, seed=0):
     if time_manager is None:
         time_manager = TimeStepManager()
+    T_calculated = [T[0]]
     results = [psi.copy()]
     rand_gen = random.Random(seed)
     state = IntegrationState(T[0], psi, H, J)
-    while state.t < T[-1]:
-        # In principle also the last step has to be checked!
-        state = time_manager(state, H, J, T, adapt, dp_max)
+    while True:
+        state = time_manager(state, T, adapt, dp_max)
+        if state.t in T[1:]:
+            if state.t not in T_calculated:
+                T_calculated.append(state.t)
+                results.append(state.psi.copy())
+            if state.t == T[-1]:
+                break
         next_t = state.next_t()
         rand_number = rand_gen.random()/(next_t - state.t)
         P = state.jump_probabilities
         if P is not None and rand_number < P[-1]:
             # Quantum Jump
             state.psi = state.jumps[(P<rand_number).sum()]
+            state.jumped = True
         else:
             # non hermitian time evolution
             if state.H_nH is None:
                 state.H_nH = calculate_H_nH(state.H, state.J)
-            state.psi = integrate(state.H_nH, state.psi, next_t - state.t)
+            try:
+                state.psi = integrate(state.H_nH, state.psi, next_t - state.t)
+            except:
+                print("Integration aborted.")
+                return results
         state.psi.renorm()
         state.t_last = state.t
         state.t = next_t
-        if state.t in T:
-            print(state.t)
-            results.append(state.psi.copy())
     return results
 
 class Ensemble(list):
