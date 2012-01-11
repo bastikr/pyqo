@@ -185,7 +185,7 @@ def _dim2str(dimensions):
     return " x ".join(dims)
 
 # Functions creating commonly used state vectors.
-def zero(x, dtype=None):
+def zero(x, dtype=complex):
     """
     Creates a StateVector of a shape defined by x where all entries are 0.
 
@@ -219,7 +219,7 @@ def zero(x, dtype=None):
         else:
             return StateVector(numpy.zeros(x, dtype=dtype))
 
-def basis_vector(x, index, dtype=None):
+def basis_vector(x, index, dtype=complex):
     """
     Creates a StateVector of a shape defined by x where only one entry is 1.
 
