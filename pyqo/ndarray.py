@@ -20,20 +20,21 @@ class Array(numpy.ndarray):
         return array
 
     def __array_finalize__(self, obj):
-        if obj is not None and obj.size != 0:
+        if obj is None:
+            return
+        if obj.size != 0:
             dtype = type(obj.flat[0])
         elif self.size != 0:
             dtype = type(self.flat[0])
         else:
             dtype = None
-        for d in datatypes.types:
-            if issubclass(dtype, d):
-                methods, properties = datatypes.types[d]
-                utils.add_methods(self, methods)
-                utils.add_properties(self, properties)
-                break
-        if obj is None:
-            return
+        if dtype is not None:
+            for d in datatypes.types:
+                if issubclass(dtype, d):
+                    methods, properties = datatypes.types[d]
+                    utils.add_methods(self, methods)
+                    utils.add_properties(self, properties)
+                    break
         self.basis = getattr(obj, "basis", None)
 
     @staticmethod
