@@ -64,7 +64,6 @@ class EmbeddedRungeKutta(RungeKutta):
             h = min((atol + abs(numpy.dot(y0.conj(), y0))*rtol)*1e4, t_next - t)
         else:
             h = h_start
-        err_total = 0
         while True:
             # Make one step
             y1, delta = self.step(f, y, t, h)
