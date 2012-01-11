@@ -207,7 +207,7 @@ def qfunc(state, X, Y=None):
             @numpy.vectorize
             def Q(a):
                 N = state.shape[0]
-                c = bases.number_basis.coherent_state(a, N, state.dtype)
+                c = bases.number_basis.coherent_state(a, N, type(state[0]))
                 return numpy.abs(numpy.dot(c.conj(), state))**2/numpy.pi
     elif isinstance(state, DensityOperator):
         assert state.ndim == 2
