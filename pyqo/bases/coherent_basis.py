@@ -169,6 +169,48 @@ class CoherentBasis(basis.Basis):
         b = self.coherent_scalar_product(self.states, alpha)
         return statevector.StateVector(self.inverse_dual(b), basis=self)
 
+    def create(self, pow=1, raise_left=False, raise_right=False):
+        from ..operators import Operator as op
+        # down-up version
+        alpha = self.states.conj()**pow
+        if raise_left and raise_right:
+            return op(self.inv_trafo*alpha, basis=self)
+        elif raise_left and not raise_right:
+            return op(numpy.dot(self.inv_trafo*alpha, self.trafo), basis=self)
+        elif not raise_left and raise_right:
+            return op(numpy.diag(alpha), basis=self)
+        elif not raise_left and not raise_right:
+            return op(a_dag.reshape((-1,1))*self.trafo, basis=self)
+
+    def destroy(self, pow=1, raise_left=False, raise_right=False):
+        from ..operators import Operator as op
+        # up-down version
+        alpha = self.states**pow
+        if raise_left and raise_right:
+            return op(alpha.reshape((-1,1))*self.inv_trafo, basis=self)
+        elif raise_left and not raise_right:
+            return op(numpy.diag(alpha), basis=self)
+        elif not raise_left and raise_right:
+            return op(numpy.dot(self.trafo*alpha, self.inv_trafo), basis=self)
+        elif not raise_left and not raise_right:
+            return op(self.trafo*alpha, basis=self)
+
+    def create_destroy(self, pow1=1, pow2=1, raise_left=False, raise_right=False):
+        from ..operators import Operator as op
+        # down-down versions
+        alpha1 = self.states.conj()**pow1
+        alpha2 = self.states**pow2
+        adag_a = alpha1.reshape((-1,1))*self.trafo*alpha2
+        if raise_left and raise_right:
+            return op(numpy.dot(numpy.dot(self.inv_trafo, adag_a), self.inv_trafo),
+                      basis=self)
+        elif raise_left and not raise_right:
+            return op(numpy.dot(self.inv_trafo, adag_a), basis=self)
+        elif not raise_left and raise_right:
+            return op(numpy.dot(adag_a, self.inv_trafo), basis=self)
+        elif not raise_left and not raise_right:
+            return op(adag_a, basis=self)
+
     def transform_func(self, basis):
         if isinstance(basis, CoherentBasis):
             new_states = self.states
