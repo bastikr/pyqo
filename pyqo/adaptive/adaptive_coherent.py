@@ -15,7 +15,7 @@ class AM_Coherent(adaptive.AdaptivityManager):
         self.H_func = H_func
         self.J_func = J_func
 
-    def adapt(self, t_last, t, psi):
+    def adapt(self, t_last, t, psi, force_adapt=False):
         lattice = psi.basis.lattice
         dt = t-t_last
 
@@ -35,46 +35,54 @@ class AM_Coherent(adaptive.AdaptivityManager):
         order0 = Q0.argsort()
         order1 = Q1.argsort()
 
-        # Determine which old basis states have to be replaced by
-        # nearest neighbor states.
-        subs = {}
-        min_q = Q0[order0[-1]]
-        for i in range(min(len(Q2),len(Q1))):
-            i0 = order0[i]
-            i1 = order1[-(i+1)]
-            if Q0[i0] < Q1[i1]:
-                subs[ind0[i0]] = ind1[i1]
-                min_q = Q1[i1]
-            else:
-                break
+        if force_adapt:
+            # After a quantumjump also next nearest neighbors might have to be
+            # used.
+            ind = ind1 + ind2
+            Q = numpy.concatenate((Q1, Q2))
+        else:
+            # Otherwise only nearest neighbors are used.
+            ind = ind1
+            Q = Q1
+
+        # Determine which old basis states have to be replaced.
+        min_q, subs = find_substitutions(ind0, ind, Q0, Q)
+        print("subs", subs)
 
         # Find out if next nearest neighbor states would be better than this
         # new basis.
-        if Q2.max() > min_q:
+        if not force_adapt and Q2.max() > min_q:
+            print("Second ring is now occupied!")
             if subs:
                 raise TimeStepError(t_last+dt/3, t_last+dt/2)
             else:
                 raise TimeStepError(t_last+dt/10, t_last+dt/5)
 
-
-        # Estimate point of time when basis has to change again
+        # Estimate point of time when basis has to change again.
         l = len(subs)
-        if l==0:
-            dt_min = 1.2*dt
-            dt_max = 1.6*dt
-        elif 1<=l<2:
-            dt_min = 0.8*dt
-            dt_max = 1.2*dt
-        elif 2<=l<4:
-            dt_min = 0.5*dt
-            dt_max = 0.8*dt
-        elif 4<=l<6:
-            dt_min = 0.2*dt
-            dt_max = 0.5*dt
+        if force_adapt:
+            dt_min = 0.6*dt
+            dt_max = 1*dt
         else:
-            raise TimeStepError(t_last+0.2*dt, t_last+0.5*dt)
+            if l==0:
+                dt_min = 1.2*dt
+                dt_max = 1.6*dt
+            elif 1<=l<2:
+                dt_min = 0.8*dt
+                dt_max = 1.2*dt
+            elif 2<=l<4:
+                dt_min = 0.5*dt
+                dt_max = 0.8*dt
+            elif 4<=l<7:
+                dt_min = 0.2*dt
+                dt_max = 0.5*dt
+            else:
+                print("Too many changes in first ring!")
+                raise TimeStepError(t_last+0.2*dt, t_last+0.5*dt)
         t_min = t+dt_min
         t_max = t+dt_max
+
+        # If nothing has to be changed return now.
         if l==0:
             return None, t_min, t_max
 
@@ -105,3 +113,17 @@ class AM_Coherent(adaptive.AdaptivityManager):
         else:
             raise NotImplementedError()
 
+def find_substitutions(ind0, ind1, x0, x1):
+    order0 = x0.argsort()
+    order1 = x1.argsort()
+    subs = {}
+    min_q = x0[order0[0]]
+    for i in range(min(len(x0), len(x1))):
+        i0 = order0[i]
+        i1 = order1[-(i+1)]
+        if x0[i0] < x1[i1]:
+            subs[ind0[i0]] = ind1[i1]
+            min_q = x1[i1]
+        else:
+            break
+    return min_q, subs
