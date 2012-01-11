@@ -185,8 +185,7 @@ def _dim2str(dimensions):
     return " x ".join(dims)
 
 # Functions creating commonly used state vectors.
-
-def zero(x):
+def zero(x, dtype=None):
     """
     Creates a StateVector of a shape defined by x where all entries are 0.
 
@@ -206,11 +205,21 @@ def zero(x):
             StateVector which will be used to determine the shape.
     """
     if isinstance(x, StateVector):
-        return StateVector(numpy.zeros_like(x))
+        if numpy.dtype(dtype) is numpy.dtype("object"):
+            u = numpy.empty_like(x)
+            u[:] = dtype(0)
+            return StateVector(u)
+        else:
+            return StateVector(numpy.zeros_like(x, dtype=dtype))
     else:
-        return StateVector(numpy.zeros(x))
+        if numpy.dtype(dtype) is numpy.dtype("object"):
+            u = numpy.empty(x)
+            u[:] = dtype(0)
+            return StateVector(u)
+        else:
+            return StateVector(numpy.zeros(x, dtype=dtype))
 
-def basis_vector(x, index):
+def basis_vector(x, index, dtype=None):
     """
     Creates a StateVector of a shape defined by x where only one entry is 1.
 
@@ -229,8 +238,8 @@ def basis_vector(x, index):
         * *index*
             A tuple or an integer specifying which entry is zero.
     """
-    e = zero(x)
-    e[index] = 1
+    e = zero(x, dtype=dtype)
+    e[index] = 1 if dtype is None else dtype(1)
     return e
 
 def gaussian(x0, k0, sigma, fin):
@@ -342,4 +351,3 @@ def adjust(array, length):
     f = scipy.interpolate.interp1d(X_old, array)
     X_new = numpy.linspace(0,1,length)
     return StateVector(f(X_new))
-
