@@ -61,7 +61,7 @@ class EmbeddedRungeKutta(RungeKutta):
         t_next = T[1]
         i = 1
         if h0 is None:
-            h = min((atol + abs(numpy.dot(y0.conj(), y0))*rtol)*1e4, t_next - t)
+            h = min((atol + abs(numpy.dot(y0.conj().flat, y0.flat))*rtol)*1e4, t_next - t)
         else:
             h = h_start
         while True:
