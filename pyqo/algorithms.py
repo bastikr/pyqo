@@ -168,6 +168,88 @@ def solve_ode(H, psi, T, J=None):
             result.append(psi.__class__(integrator.y.reshape(psi.shape)))
         return result
 
+class MasterTimeStepManager:
+    backup = None
+
+    def __call__(self, state, T, adaptiveManager):
+        if self.backup is None:
+            self.backup = state.copy()
+
+        was_valid = True
+        # Adapt system
+        if adaptiveManager is None:
+            state.t_min["adaptive"] = float("inf")
+            state.t_max["adaptive"] = float("inf")
+        elif state.t in T or state.t_min["adaptive"] < state.t:
+            t_last = float("NaN") if self.backup.t==state.t else self.backup.t
+            try:
+                basis, t_min, t_max = adaptiveManager.adapt(t_last, state.t, state.psi)
+            except TimeStepError as ts_error:
+                print("Too big change for basis.")
+                state = self.backup.copy()
+                state.t_max["adaptive"] = ts_error.new_t_max
+                state.t_min["adaptive"] = ts_error.new_t_min
+            else:
+                state.t_min["adaptive"] = t_min
+                state.t_max["adaptive"] = t_max
+                if basis is not None:
+                    print("Change basis.")
+                    state.H, state.J = adaptiveManager.adapt_operators(state.t, basis)
+                    state.H_nH = None
+                    state.psi = adaptiveManager.adapt_statevector(state.psi, basis)
+                    state.jumped = False
+                    self.backup = state.copy()
+
+
+        state.t_min["H"] = float("inf")
+        state.t_max["H"] = float("inf")
+        state.t_min["J"] = float("inf")
+        state.t_max["J"] = float("inf")
+        state.t_min["jump"] = float("inf")
+        state.t_max["jump"] = float("inf")
+
+        T_remaining = T[T>state.t]
+        if len(T_remaining)>0:
+            state.t_max["T"] = T_remaining[0]
+        return state
+
+
+def integrate_master(H_nH, rho, dt, J):
+    dot = numpy.dot
+    def f(t,y):
+        result = -1j*(H_nH*y - y*H_nH.H)
+        for j in J:
+            result += j*y*j.H
+        return result
+    return rungekutta.RK2_3(mpmath.mpf).integrate(f, rho, (0,dt), rtol=1e-6, atol=1e-6)[-1]
+
+def solve_master(H, rho, T, J=None, adapt=None, time_manager=None):
+    if isinstance(rho, statevector.StateVector):
+        rho = rho.DO
+    if J is None:
+        J = []
+    if time_manager is None:
+        time_manager = MasterTimeStepManager()
+    results = [rho.copy()]
+    T_calculated = [T[0]]
+    state = IntegrationState(T[0], rho, H, J)
+    while True:
+        state = time_manager(state, T, adapt)
+        if state.t in T[1:]:
+            if state.t not in T_calculated:
+                T_calculated.append(state.t)
+                results.append(state.psi.copy())
+            if state.t == T[-1]:
+                break
+        next_t = state.next_t()
+        if state.H_nH is None:
+            state.H_nH = calculate_H_nH(state.H, state.J)
+        state.psi = integrate_master(state.H_nH, state.psi, next_t - state.t, state.J)
+        state.t_last = state.t
+        state.t = next_t
+    return results
+
+
 class TimeStepError(Exception):
     new_t_min = None
     new_t_max = None
