@@ -14,7 +14,7 @@ def as_vector(x):
     return x.reshape(-1)
 
 def as_matrix(x):
-    rank = len(x.shape)
+    rank = x.ndim
     if rank==1:
         dim = int(x.shape[0]**(1./2))
     else:
@@ -38,7 +38,7 @@ def expect(op, state):
     assert isinstance(op, operators.BaseOperator)
     # Calculate expectation value for given operator and state
     if isinstance(state, statevector.StateVector):
-        return numpy.tensordot(state.conj(), op*state, len(state.shape)).item()
+        return numpy.tensordot(state.conj(), op*state, state.ndim).item()
     elif isinstance(state, operators.Operator):
         return as_matrix(op*state).trace()
     else:
@@ -92,7 +92,7 @@ def steady(H, J=None):
     else:
         H_ = as_matrix(H)
         y = numpy.linalg.solve(H_, numpy.zeros(H_.shape[0]))
-        rank = len(H.shape)//2
+        rank = H.ndim//2
         return statevector.StateVector(y.reshape(H.shape[:rank]))
 
 def _as_density_operator(psi, shape):

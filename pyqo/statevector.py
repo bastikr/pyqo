@@ -47,7 +47,7 @@ class StateVector(ndarray.Array):
     @staticmethod
     def _check(array):
         if array.basis is not None:
-            assert array.basis.rank == len(array.shape)
+            assert array.basis.rank == array.ndim
 
     def __str__(self):
         clsname = self.__class__.__name__
@@ -78,7 +78,7 @@ class StateVector(ndarray.Array):
         """
         if self.basis is None:
             return numpy.sqrt(numpy.abs(
-                        numpy.tensordot(self, self.conj(), len(self.shape))
+                        numpy.tensordot(self, self.conj(), self.ndim)
                         ))
         else:
             return self.basis.norm(self)
@@ -166,8 +166,7 @@ class StateVector(ndarray.Array):
         the same as ``sv1 ^ (sv2 + sv3)``.
         """
         assert isinstance(other, StateVector)
-        b = bases.compose_bases(self.basis, len(self.shape),
-                        other.basis, len(other.shape))
+        b = bases.compose_bases(self.basis, self.ndim, other.basis, other.ndim)
         return self.__class__(numpy.multiply.outer(self, other), basis=b)
 
     __xor__ = tensor

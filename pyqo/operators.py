@@ -30,19 +30,19 @@ class Operator(ndarray.Array, BaseOperator):
     @staticmethod
     def _check(array):
         shape = array.shape
-        rank = len(shape)
+        rank = array.ndim
         if rank%2 != 0 or shape[:(rank//2)] != shape[(rank//2):]:
             raise ValueError("Operators must be square!")
 
     def __str__(self):
         clsname = self.__class__.__name__
-        rank = len(self.shape)
+        rank = self.ndim
         dims = " x ".join(map(str, self.shape[:rank//2]))
         array = numpy.ndarray.__str__(self)
         return "%s\n%s -> %s\n%s" % (clsname, dims, dims, array)
 
     def _apply(self, func, left=True, right=True):
-        rank = len(self.shape) // 2
+        rank = self.ndim // 2
         dims = map(range, self.shape[:rank])
         d = self.copy()
         if left:
@@ -70,7 +70,7 @@ class Operator(ndarray.Array, BaseOperator):
 
     @property
     def T(self):
-        rank = len(self.shape)
+        rank = self.ndim
         ind = tuple(range(rank))
         return self.transpose(ind[rank//2:]+ind[:rank//2])
 
@@ -83,11 +83,11 @@ class Operator(ndarray.Array, BaseOperator):
             indices = (indices,)
         else:
             indices = utils._sorted_list(indices, True)
-        rank = len(self.shape)//2
+        rank = self.ndim//2
         assert indices[-1] < rank
         mixed = self.inverse_dual(left=True, right=False)
         for i in indices:
-            mixed = mixed.trace(axis1=i, axis2=i + len(mixed.shape)//2)
+            mixed = mixed.trace(axis1=i, axis2=i + mixed.ndim//2)
         if self.basis is None:
             b = None
         else:
@@ -98,9 +98,9 @@ class Operator(ndarray.Array, BaseOperator):
         if not isinstance(array, Operator):
             array = Operator(array, copy=False)
         op = numpy.multiply.outer(self, array)
-        rank1 = len(self.shape)
+        rank1 = self.ndim
         m = rank1//2
-        rank2 = len(array.shape)
+        rank2 = array.ndim
         n = rank2//2
         R = lambda a,b:tuple(range(a,b))
         perm = R(0,m) + R(rank1, rank1+n) + \
@@ -116,7 +116,7 @@ class Operator(ndarray.Array, BaseOperator):
                 raise ValueError("Dimensions incompatible!")
             if self.basis != other.basis:
                 raise ValueError("Bases incompatible!")
-            rank = len(self.shape)
+            rank = self.ndim
             return other.__class__(numpy.tensordot(self, other, rank//2),
                     basis=self.basis)
         elif isinstance(other, Operator):
@@ -124,7 +124,7 @@ class Operator(ndarray.Array, BaseOperator):
                 raise ValueError("Dimensions incompatible!")
             if self.basis != other.basis:
                 raise ValueError("Bases incompatible!")
-            rank = len(self.shape)
+            rank = self.ndim
             return self.__class__(numpy.tensordot(self, other, rank//2),
                     basis=self.basis)
         elif isinstance(other, statevector.StateVector):
@@ -133,7 +133,7 @@ class Operator(ndarray.Array, BaseOperator):
                                  "incompatible")
             if self.basis != other.basis:
                 raise ValueError("Bases incompatible!")
-            rank = len(self.shape)
+            rank = self.ndim
             return other.__class__(numpy.tensordot(self,other,rank//2),
                     basis=self.basis)
         else:
@@ -150,7 +150,7 @@ class DensityOperator(Operator):
         assert indices[-1] < rank
         mixed = self.dual(left=True, right=False)
         for i in indices[::-1]:
-            mixed = mixed.trace(axis1=i, axis2=i + len(mixed.shape)//2)
+            mixed = mixed.trace(axis1=i, axis2=i + mixed.ndim//2)
         return mixed.inverse_dual(left=True, right=False)
 
 
@@ -164,9 +164,8 @@ def identity(x):
     if isinstance(x, int):
         return Operator(numpy.eye(x))
     elif isinstance(x, Operator):
-        shape = x.shape
-        rank = len(shape)
-        id = (Operator(numpy.eye(N)) for N in shape[:rank//2])
+        rank = x.ndim
+        id = (Operator(numpy.eye(N)) for N in x.shape[:rank//2])
         return reduce(Operator.tensor,id)
     else:
         raise TypeError("Unsupported argument type.")
@@ -194,7 +193,7 @@ def liouvillian(H, J=()):
     return L
 
 def qfunc(state, X, Y=None):
-    rank = len(state.shape)
+    rank = state.ndim
     n = state.shape[0]
     if isinstance(state, statevector.StateVector):
         assert state.ndim == 1

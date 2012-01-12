@@ -19,7 +19,7 @@ class Basis:
 
     def scalar_product(self, psi1, psi2):
         assert psi1.shape == psi2.shape
-        return numpy.tensordot(self.dual(psi1).conj(), psi2, len(psi1.shape))
+        return numpy.tensordot(self.dual(psi1).conj(), psi2, psi1.ndim)
 
     def norm(self, psi):
         return numpy.sqrt(numpy.abs(self.scalar_product(psi, psi)))
