@@ -3,7 +3,6 @@ import numpy
 from . import ndarray
 from . import bases
 from . import utils
-from . import datatypes
 
 class StateVector(ndarray.Array):
     r"""
