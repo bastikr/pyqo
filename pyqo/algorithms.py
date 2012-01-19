@@ -8,7 +8,7 @@ except ImportError:
 import scipy.linalg, scipy.integrate
 
 from . import statevector, operators
-from . import rungekutta
+from .utils import rungekutta
 
 def as_vector(x):
     return x.reshape(-1)

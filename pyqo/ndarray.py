@@ -1,7 +1,7 @@
 import numpy
 
 from . import datatypes
-from . import utils
+from .utils import utils
 
 
 class Array(numpy.ndarray):

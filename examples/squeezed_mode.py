@@ -4,8 +4,8 @@ import numpy as np
 import mpmath as mp
 import pylab
 
-mp.mp.dps = 16
-N = 50
+#mp.mp.dps = 16
+N = 70
 
 # Parameter of system
 mu = mp.mpf("1.2")
@@ -21,7 +21,7 @@ H = mu*(basis.create(2) + basis.destroy(2))
 J = [eta*a]
 
 # Solve master equation
-T = np.linspace(0, 1, 11)
+T = np.linspace(0, 1.0, 11)
 psi_t = qo.solve_mc_single(H, psi_0, T, J)
 
 # Visualization

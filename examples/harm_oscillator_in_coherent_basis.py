@@ -32,7 +32,6 @@ exp_a = []
 
 X,Y = np.meshgrid(np.linspace(-6,6), np.linspace(-6,6))
 log = np.vectorize(mp.log)
-print len(psi_t)
 for i, psi in enumerate(psi_t):
     pylab.subplot(2,3,i+1)
     b = psi.basis

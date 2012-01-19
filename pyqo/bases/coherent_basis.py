@@ -11,7 +11,7 @@ except:
 
 from . import basis
 from .. import ndarray
-from .. import lattice
+from ..utils import lattice
 
 class CoherentBasis(basis.Basis):
     """

@@ -59,6 +59,7 @@ pylab.ylabel(r"$\langle P_1 \rangle$")
 pylab.plot(T, np.abs(e_exp))
 pylab.show()
 
+"""
 Q = []
 for rho_t in rho:
     rho_f = rho_t.ptrace(1)
@@ -70,3 +71,4 @@ def qplot(fig,step):
     axes.imshow(Q[step])
 
 qo.animate(len(rho), qplot)
+"""

@@ -5,4 +5,4 @@ from .algorithms import expect, steady, solve_es, solve_ode, solve_mc_single, so
 
 from . import bases
 from . import adaptive
-
+from . import datatypes
