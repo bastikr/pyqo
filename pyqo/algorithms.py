@@ -391,7 +391,6 @@ class TimeStepManager:
             state.t_max["jump"] = state.t + dt_max
             state.jumps = jump_results
             state.jump_probabilities = jump_probabilities
-            #print("jump probabilities", jump_probabilities)
         T_remaining = T[T>state.t]
         if len(T_remaining)>0:
             state.t_max["T"] = T_remaining[0]
@@ -432,7 +431,8 @@ def integrate(H_nH, psi, dt):
     integrator.integrate(dt)
     if not integrator.successful():
         raise ValueError("Integration went wrong.")
-    return psi.__class__(integrator.y.reshape(psi.shape), dtype=psi.dtype)
+    return psi.__class__(integrator.y.reshape(psi.shape), basis=psi.basis,
+                         dtype=psi.dtype)
 
 def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-2, seed=0):
     if time_manager is None:
