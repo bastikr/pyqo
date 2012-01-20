@@ -8,11 +8,13 @@ import pylab
 N = 70
 
 # Parameter of system
-mu = mp.mpf("1.2")
-eta = mp.mpf("1.2")
+#mu = mp.mpf("1.2")
+#eta = mp.mpf("1.2")
+mu = 1.2
+eta = 1.2
 
 # Choose initial coherent basis and state
-basis = qo.bases.NumberBasis(0, N, dtype=mp.mpc)
+basis = qo.bases.NumberBasis(0, N)
 psi_0 = basis.basis_vector(0)
 
 # Define Hamiltonian and jump operator
