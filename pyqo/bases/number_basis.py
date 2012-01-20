@@ -26,7 +26,7 @@ class NumberBasis(basis.ONBasis):
         from ..statevector import StateVector
         assert self.N0 <= i < self.N1
         if self.dtype is None:
-            X = numpy.zeros(self.N1-self.N0)
+            X = numpy.zeros(self.N1-self.N0, dtype=complex)
             X[i-self.N0] = 1
         else:
             X = numpy.empty(self.N1-self.N0, dtype=self.dtype)
