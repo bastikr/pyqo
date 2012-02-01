@@ -33,13 +33,13 @@ def expect(op, state):
             result.append(sum(expect(op, states))/N)
         return tuple(result)
     # Handle multiple states
-    if isinstance(state, (list,tuple)):
+    if not isinstance(state, (statevector.StateVector, operators.Operator)):
         return tuple(map(lambda x:expect(op,x), state))
     assert isinstance(op, operators.BaseOperator)
     # Calculate expectation value for given operator and state
     if isinstance(state, statevector.StateVector):
         return numpy.tensordot(state.conj(), op*state, state.ndim).item()
-    elif isinstance(state, operators.Operator):
+    elif isinstance(state, operators.DensityOperator):
         return as_matrix(op*state).trace()
     else:
         raise TypeError("Type of the given state is not supported.")
@@ -148,7 +148,7 @@ def solve_ode(H, psi, T, J=None):
             integrator.integrate(t)
             if not integrator.successful():
                 raise ValueError("Integration went wrong.")
-            result.append(operators.DensityOperator(integrator.y.reshape(H.shape)))
+            result.append(operators.DensityOperator(integrator.y.reshape(H.shape), basis=psi.basis))
         return result
     else:
         assert isinstance(psi, statevector.StateVector)
@@ -165,7 +165,7 @@ def solve_ode(H, psi, T, J=None):
             integrator.integrate(dt)
             if not integrator.successful():
                 raise ValueError("Integration went wrong.")
-            result.append(psi.__class__(integrator.y.reshape(psi.shape)))
+            result.append(psi.__class__(integrator.y.reshape(psi.shape), basis=psi.basis))
         return result
 
 class MasterTimeStepManager:
