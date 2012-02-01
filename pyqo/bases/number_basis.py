@@ -35,6 +35,24 @@ class NumberBasis(basis.ONBasis):
             X[i-self.N0] = self.dtype(1)
         return StateVector(X, basis=self)
 
+    def identity(self):
+        from ..operators import Operator as op
+        N = self.N1-self.N0
+        if self.dtype is None:
+            X = numpy.eye(N)
+        else:
+            X = numpy.array(list(self.dtype(1))*N)
+            X = numpy.diag(X)
+        return op(X, basis=self)
+
+    def number(self):
+        from ..operators import Operator as op
+        if self.dtype is None:
+            X = numpy.arange(self.N0, self.N1)
+        else:
+            X = numpy.array(list(self.dtype(i) for i in range(self.N0,self.N1)))
+        return op(numpy.diag(X), basis=self)
+
     def destroy(self, pow=1):
         from ..operators import Operator as op
         N0 = self.N0 + pow
@@ -49,6 +67,16 @@ class NumberBasis(basis.ONBasis):
     def create(self, pow=1):
         return self.destroy(pow=pow).T
 
+    def coherent_state(self, alpha):
+        from ..statevector import StateVector as sv
+        assert self.N0 == 0
+        assert self.dtype is None
+        x = numpy.empty(self.N1, dtype=complex)
+        x[0] = 1
+        for n in range(1,self.N1):
+            x[n] = x[n-1]*alpha/numpy.sqrt(n)
+        x = numpy.exp(-numpy.abs(alpha)**2/2.)*x
+        return sv(x, basis=self)
 
 def coherent_state(alpha, N, dtype=complex):
     from .. import statevector
