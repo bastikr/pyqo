@@ -42,7 +42,7 @@ class CompositeBasisTestCase(unittest.TestCase):
         b1 = basis.ONBasis(1)
         b2 = basis.ONBasis(2)
         b = (b1 ^ b2)
-        self.assertIsInstance(b, basis.ONBasis)
+        self.assertIsInstance(b, basis.CompositeBasis)
         self.assertEqual(b.rank, 3)
 
     def test_dual(self):
@@ -76,7 +76,7 @@ class CompositeBasisTestCase(unittest.TestCase):
         b = basis.compose_bases(None, 1, None, 2)
         self.assertIs(b, None)
         b = basis.compose_bases(b1, 1, None, 2)
-        self.assertIsInstance(b, basis.ONBasis)
+        self.assertIsInstance(b, basis.CompositeBasis)
         self.assertEqual(b.rank, 3)
 
     def test_equality(self):

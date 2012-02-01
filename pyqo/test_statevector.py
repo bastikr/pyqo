@@ -54,7 +54,7 @@ class TestStateVector(unittest.TestCase):
         psi = psi1 ^ psi2
         self.assertIsInstance(psi, sv.StateVector)
         self.assertEqual(psi.shape, (3,4))
-        self.assertIsInstance(psi.basis, bases.ONBasis)
+        self.assertIsInstance(psi.basis, bases.CompositeBasis)
         self.assertEqual(psi.basis.rank, 2)
 
 

@@ -111,12 +111,6 @@ class ONBasis(Basis):
     def inverse_dual(self, psi):
         return psi
 
-    def __xor__(self, other):
-        if isinstance(other, ONBasis):
-            return ONBasis(self.rank + other.rank)
-        else:
-            return Basis.__xor__(self, other)
-
 
 def compose_bases(basis1, rank1, basis2, rank2):
     if basis1 is None and basis2 is None:
