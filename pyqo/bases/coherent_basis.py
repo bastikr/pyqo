@@ -51,7 +51,7 @@ class CoherentBasis(basis.Basis):
         return self._inv_trafo
 
     @staticmethod
-    def create_hexagonal_grid(center, d, rings):
+    def create_hexagonal_grid_rings(center, d, rings):
         """
         Create a new coherent basis with basis states on a hexagonal grid.
 
@@ -81,6 +81,35 @@ class CoherentBasis(basis.Basis):
             for j in range(start,end+1):
                 lat.select((i, j))
         return CoherentBasis(lat)
+
+    @staticmethod
+    def create_hexagonal_grid_nearestN(origin, d, point, N):
+        """
+        Create a new coherent basis with basis states on a hexagonal grid.
+
+        As basis states the nearest N grid points to the center are choosen.
+
+        *Arguments*
+            * *origin*
+                A complex number defining the origin of the grid.
+
+            * *d*
+                A real number defining the lattice constant.
+
+            * *point*
+                A complex number used as reference point to which the nearest
+                N lattice points are selected.
+
+            * *N*
+                An integer giving the number of basis states.
+        """
+        origin = mpmath.mpmathify(origin)
+        point = mpmath.mpmathify(point)
+        d = mpmath.mpf(d)
+        lat = lattice.HexagonalLattice(d, origin, dtype=mpmath.mpf)
+        lat.select_nearestN(point, N)
+        return CoherentBasis(lat)
+
 
     @staticmethod
     def coherent_scalar_product(alpha, beta):
