@@ -62,7 +62,7 @@ class Lattice:
         self.selected = []
 
     def state(self, index):
-        return sum(tuple(index[i]*self.basis_vectors[i] for i in range(len(index))))
+        return sum(tuple(index[i]*self.basis_vectors[i] for i in range(len(index)))) + self.origin
         #return numpy.dot(index, self.basis_vectors) + self.origin
 
     def states(self, indices=None):
