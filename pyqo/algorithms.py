@@ -417,7 +417,7 @@ def rk4(f, y0, t, h):
 def integrate_mp(H_nH, psi, dt):
     def f(t, y):
         return -1j*H_nH*y
-    return rungekutta.RK2_3(mpmath.mpf).integrate(f, psi, (0,dt), rtol=1e-6, atol=1e-6)[-1]
+    return rungekutta.RK2_3(mpmath.mpf).integrate(f, psi, (0,dt), rtol=1e-8, atol=1e-8)[-1]
 
 def integrate(H_nH, psi, dt):
     if mpmath is not None and isinstance(psi.flat[0], (mpmath.mpc, mpmath.mpf)):
@@ -434,11 +434,14 @@ def integrate(H_nH, psi, dt):
     return psi.__class__(integrator.y.reshape(psi.shape), basis=psi.basis,
                          dtype=psi.dtype)
 
+class Trajectory(list):
+    pass
+
 def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-2, seed=0):
     if time_manager is None:
         time_manager = TimeStepManager()
     T_calculated = [T[0]]
-    results = [psi.copy()]
+    results = Trajectory([psi.copy()])
     rand_gen = random.Random(seed)
     state = IntegrationState(T[0], psi, H, J)
     while True:
@@ -468,10 +471,21 @@ def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-
         state.psi.renorm()
         state.t_last = state.t
         state.t = next_t
+        print(state.t)
     return results
 
 class Ensemble(list):
-    pass
+    @property
+    def DO(self):
+        if len(self) == 0:
+            return self
+        elif isinstance(self[0], Trajectory):
+            return map(lambda e:Ensemble(e).DO, zip(*self))
+        else:
+            rho = 0
+            for state in self:
+                rho += state.DO
+        return rho/len(self)
 
 def solve_mc(H, psi, T, J=None, trajectories=100, seed=0):
     rand_gen = random.Random(seed)
