@@ -10,7 +10,7 @@ mp.mp.dps = 32
 omega = 1.
 
 # Choose initial coherent basis and state
-basis = qo.bases.CoherentBasis.create_hexagonal_grid(2, 1.2, 2)
+basis = qo.bases.CoherentBasis.create_hexagonal_grid_rings(2, 1.2, 2)
 psi_0 = basis.coordinates(mp.mpf("2.1"))
 
 # Define Hamiltonian (dependent on basis)
@@ -25,6 +25,8 @@ AM = qo.adaptive.AM_Coherent(create_H)
 
 # Solve master equation
 T = np.linspace(0, 2*np.pi, 6)
+print(T)
+print(np.pi)
 psi_t = qo.solve_mc_single(H_0, psi_0, T, adapt=AM)
 
 # Visualization
@@ -39,6 +41,7 @@ for i, psi in enumerate(psi_t):
     a = qo.Operator(b.trafo * b.states, basis=b)
     exp_a.append(qo.expect(a, psi))
     exp_a_numpy = np.array(exp_a, dtype=complex)
+    print(exp_a_numpy)
 
     # Calculate Q-function
     Q = qo.qfunc(psi, X, Y)

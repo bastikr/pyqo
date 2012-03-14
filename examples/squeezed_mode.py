@@ -5,13 +5,13 @@ import mpmath as mp
 import pylab
 
 #mp.mp.dps = 16
-N = 70
+N = 60
 
 # Parameter of system
 #mu = mp.mpf("1.2")
-#eta = mp.mpf("1.2")
-mu = 1.2
-eta = 1.2
+#kappa = mp.mpf("1.2")
+mu = 0.35
+kappa = 1
 
 # Choose initial coherent basis and state
 basis = qo.bases.NumberBasis(0, N)
@@ -20,11 +20,13 @@ psi_0 = basis.basis_vector(0)
 # Define Hamiltonian and jump operator
 a = basis.destroy(1)
 H = mu*(basis.create(2) + basis.destroy(2))
-J = [eta*a]
+J = [kappa*a]
 
 # Solve master equation
-T = np.linspace(0, 1.0, 11)
-psi_t = qo.solve_mc_single(H, psi_0, T, J)
+T = np.linspace(0, 5, 5)
+psi_t = qo.solve_mc(H, psi_0, T, J, trajectories=10).DO
+#psi_t = qo.solve_mc_single(H, psi_0, T, J)
+#psi_t = qo.solve_master(H, psi_0, T, J)
 
 # Visualization
 exp_a = []
@@ -33,6 +35,7 @@ X,Y = np.meshgrid(np.linspace(-7,7), np.linspace(-7,7))
 log = np.vectorize(mp.log)
 
 #"""
+i = 0
 for psi  in psi_t:
     pylab.figure()
     # Calculate <a>
@@ -41,12 +44,15 @@ for psi  in psi_t:
 
     # Calculate Q-function
     Q = qo.qfunc(psi, X, Y)
-    Q_numpy = np.array(Q.tolist(), dtype=float)
+    Q_numpy = np.array(np.abs(Q).tolist(), dtype=float)
 
     # Basis states
     pylab.imshow(Q_numpy, origin="lower", extent=(-7,7,-7,7))
     pylab.contour(X,Y,Q)
-    pylab.plot(exp_a_numpy.real, exp_a_numpy.imag)
+    i += 1
+    pylab.savefig("presentation/reduced_parametric_oscillator/%s.png" % i, dpi=300)
+    #pylab.plot(exp_a_numpy.real, exp_a_numpy.imag)
+    print()
 #"""
 
 
