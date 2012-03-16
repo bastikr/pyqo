@@ -107,6 +107,11 @@ class HexagonalLattice(Lattice):
         v1 = (dtype("1")/2 + 1j*dtype("3")**(dtype("1")/2)/2)*d
         Lattice.__init__(self, origin, numpy.array([v0,v1]), selection)
 
+    def __repr__(self):
+        clsname = "%s.%s" % (self.__module__, self.__class__.__name__)
+        return "%s(%s, %s, %s)" % (clsname, self.d, repr(self.origin),
+                                    repr(self.selected))
+
     def _neighbors(self, index):
         x = index[0]
         y = index[1]
@@ -132,6 +137,10 @@ class SquareLattice(Lattice):
         v1 = (dtype("0") + 1j*dtype("1"))*d
         Lattice.__init__(self, origin, numpy.array([v0,v1]))
 
+    def __repr__(self):
+        clsname = "%s.%s" % (self.__module__, self.__class__.__name__)
+        return "%s(%s, %s, %s)" % (clsname, self.d, repr(self.origin),
+                                    repr(self.selected))
     def _neighbors(self, index):
         x = index[0]
         y = index[1]

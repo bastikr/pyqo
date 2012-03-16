@@ -12,6 +12,7 @@ def load(path, namespace=None):
     f.close()
     ns = {"pyqo": pyqo}
     ns.update(numpy.__dict__)
-    ns.update(namespace)
+    if namespace is not None:
+        ns.update(namespace)
     return eval(buf, ns)
 
