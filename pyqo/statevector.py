@@ -2,7 +2,7 @@ import numpy
 
 from . import ndarray
 from . import bases
-from .utils import utils
+from .utils import list_functions
 
 class StateVector(ndarray.Array):
     r"""
@@ -130,7 +130,7 @@ class StateVector(ndarray.Array):
         if isinstance(indices, int):
             a = (indices,)
         else:
-            a = utils.sorted_list(indices, True)
+            a = list_functions.sorted_list(indices, True)
         # statevector.py and operators.py have circular import
         from . import operators
         dual = self if self.basis is None else self.basis.dual(self)

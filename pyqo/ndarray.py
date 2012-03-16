@@ -1,7 +1,7 @@
 import numpy
+import types
 
 from . import datatypes
-from .utils import utils
 
 
 class Array(numpy.ndarray):
@@ -32,10 +32,20 @@ class Array(numpy.ndarray):
             for d in datatypes.types:
                 if issubclass(dtype, d):
                     methods, properties = datatypes.types[d]
-                    utils.add_methods(self, methods)
-                    utils.add_properties(self, properties)
+                    add_methods(self, methods)
+                    add_properties(self, properties)
                     break
         self.basis = getattr(obj, "basis", None)
+
+    def __repr__(self):
+        clsname = "%s.%s" % (self.__module__, self.__class__.__name__)
+        def f(a):
+            if isinstance(a, list):
+                return "[%s]" % ",".join(map(f, a))
+            else:
+                return repr(a)
+        return "%s(%s, basis=%s)" % (clsname, f(self.tolist()),
+                                     repr(self.basis))
 
     @staticmethod
     def _check(array):
@@ -117,4 +127,15 @@ class Array(numpy.ndarray):
             result.basis = self.basis
         result.basis = self.basis
         return result
+
+
+def add_methods(array, methods):
+    for name, func in methods.items():
+        f = types.MethodType(func, array)
+        setattr(array, name, f)
+
+def add_properties(array, properties):
+    for name, func in properties.items():
+        f = types.MethodType(func, array)
+        setattr(array, "_"+name, f)
 

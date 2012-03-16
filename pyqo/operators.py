@@ -5,7 +5,7 @@ import numpy
 from . import ndarray
 from . import statevector
 from . import bases
-from .utils import utils
+from .utils import list_functions
 
 class BaseOperator:
     pass
@@ -82,7 +82,7 @@ class Operator(ndarray.Array, BaseOperator):
         if isinstance(indices, int):
             indices = (indices,)
         else:
-            indices = utils.sorted_list(indices, True)
+            indices = list_functions.sorted_list(indices, True)
         rank = self.ndim//2
         assert indices[-1] < rank
         mixed = self.inverse_dual(left=True, right=False)
@@ -145,7 +145,7 @@ class DensityOperator(Operator):
         if isinstance(indices, int):
             indices = (indices,)
         else:
-            indices = utils.sorted_list(indices, True)
+            indices = list_functions.sorted_list(indices, True)
         rank = len(shape)//2
         assert indices[-1] < rank
         mixed = self.dual(left=True, right=False)

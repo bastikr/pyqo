@@ -37,6 +37,13 @@ class CoherentBasis(basis.Basis):
         else:
             self.states = ndarray.Array(states)
 
+    def __repr__(self):
+        clsname = "%s.%s" % (self.__module__, self.__class__.__name__)
+        if lattice is None:
+            return "%s(%s)" % (clsname, repr(self.states))
+        else:
+            return "%s(%s)" % (clsname, repr(self.lattice))
+
     @property
     def trafo(self):
         if self._trafo is None:

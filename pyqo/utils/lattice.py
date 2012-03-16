@@ -10,6 +10,11 @@ class Lattice:
         self.basis_vectors = basis_vectors
         self.selected = [] if selected is None else list(selected)
 
+    def __repr__(self):
+        clsname = "%s.%s" % (self.__module__, self.__class__.__name__)
+        return "%s(%s, %s, %s)" % (clsname, repr(self.origin),
+                    repr(self.basis_vectors), repr(self.selected))
+
     @staticmethod
     def scalar_product(a, b):
         if isinstance(a, numpy.ndarray):

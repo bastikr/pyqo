@@ -1,4 +1,3 @@
-import types
 '''
 def _conjugate_indices(indices, ndim):
     """
@@ -17,14 +16,4 @@ def sorted_list(iterable, reverse=False):
     if reverse:
         a.reverse()
     return a
-
-def add_methods(array, methods):
-    for name, func in methods.items():
-        f = types.MethodType(func, array)
-        setattr(array, name, f)
-
-def add_properties(array, properties):
-    for name, func in properties.items():
-        f = types.MethodType(func, array)
-        setattr(array, "_"+name, f)
 
