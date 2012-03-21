@@ -10,6 +10,7 @@ except:
     print("mpmath not found - Calculating coherent bases not possible")
 
 from . import basis
+from . import number_basis
 from .. import ndarray
 from ..utils import lattice
 
@@ -254,6 +255,12 @@ class CoherentBasis(basis.Basis):
             T = CoherentBasis.coherent_scalar_product(new_states, old_states)
             inv_trafo = self.inv_trafo
             return lambda psi:numpy.dot(inv_trafo, numpy.dot(T, psi))
+        elif isinstance(basis, number_basis.NumberBasis):
+            states = self.states
+            A = numpy.empty((basis.N1-basis.N0, len(states)), dtype=mpmath.mpc)
+            for i, alpha in enumerate(states):
+                A[:,i] = basis.coherent_state(alpha, dtype=mpmath.mpc)
+            return lambda psi:numpy.dot(A, psi)
         else:
             raise NotImplementedError()
 

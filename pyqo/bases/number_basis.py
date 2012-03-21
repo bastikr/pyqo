@@ -67,15 +67,18 @@ class NumberBasis(basis.ONBasis):
     def create(self, pow=1):
         return self.destroy(pow=pow).T
 
-    def coherent_state(self, alpha):
+    def coherent_state(self, alpha, dtype=complex):
         from ..statevector import StateVector as sv
-        assert self.N0 == 0
-        assert self.dtype is None
-        x = numpy.empty(self.N1, dtype=complex)
-        x[0] = 1
-        for n in range(1,self.N1):
-            x[n] = x[n-1]*alpha/numpy.sqrt(n)
-        x = numpy.exp(-numpy.abs(alpha)**2/2.)*x
+        x = numpy.empty(self.N1, dtype=dtype)
+        x[0] = dtype("1")
+        for n in range(1, self.N1):
+            x[n] = x[n-1]*alpha/(n)**(0.5)
+        if isinstance(dtype, complex):
+            a = numpy.exp(-numpy.abs(alpha)**2/2.)
+        else:
+            import mpmath
+            a = mpmath.exp(-mpmath.norm(alpha)**2/2)
+        x = a*x[self.N0:self.N1]
         return sv(x, basis=self)
 
 def coherent_state(alpha, N, dtype=complex):
