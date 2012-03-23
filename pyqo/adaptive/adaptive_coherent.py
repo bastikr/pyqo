@@ -105,7 +105,6 @@ class AM_Coherent(adaptive.AdaptivityManager):
         return (H,J)
 
     def adapt_statevector(self, psi, basis):
-        f = basis.transform_func(psi.basis)
         if isinstance(psi, statevector.StateVector):
             psi_new = psi.change_basis(basis)
             psi_new.renorm()
