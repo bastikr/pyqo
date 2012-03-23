@@ -7,7 +7,7 @@ def part_factorial(X, n):
         return X**0
     return X*part_factorial(X-1, n-1)
 
-class NumberBasis(basis.ONBasis):
+class FockBasis(basis.ONBasis):
     rank = 1
     N0 = None
     N1 = None
