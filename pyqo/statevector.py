@@ -99,6 +99,12 @@ class StateVector(ndarray.Array):
         """
         return self/self.norm()
 
+    def change_basis(self, basis):
+        if self.basis is None:
+            raise ValueError("The current basis of the statevetor is unknown.")
+        f = self.basis.basis_change_func(basis)
+        return self.__class__(f(self), basis=basis)
+
     @property
     def DO(self):
         """

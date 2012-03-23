@@ -258,7 +258,7 @@ class CoherentBasis(basis.Basis):
         elif not raise_left and not raise_right:
             return op(adag_a, basis=self)
 
-    def transform_func(self, basis):
+    def basis_change_func(self, basis):
         if isinstance(basis, CoherentBasis):
             new_states = self.states
             old_states = basis.states
