@@ -214,6 +214,7 @@ class CoherentBasis(basis.Basis):
             sv = statevector.StateVector(self.inverse_dual(b), basis=self)
         else:
             sv = statevector.StateVector(b, basis=self)
+        return sv
 
     def create(self, pow=1, raise_left=False, raise_right=False):
         from ..operators import Operator as op
