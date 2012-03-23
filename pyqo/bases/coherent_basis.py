@@ -40,10 +40,22 @@ class CoherentBasis(basis.Basis):
 
     def __repr__(self):
         clsname = "%s.%s" % (self.__module__, self.__class__.__name__)
-        if lattice is None:
+        if self.lattice is None:
             return "%s(%s)" % (clsname, repr(self.states))
         else:
             return "%s(%s)" % (clsname, repr(self.lattice))
+
+    def __add__(self, other):
+        if isinstance(other, CoherentBasis):
+            # TODO: Implement addition of lattices
+            #if self.lattice is not None and other.lattice is not None:
+            #    arg = (self.lattice + other.lattice)
+            #else:
+            #    arg = numpy.concatenate(self.states, other.states)
+            arg = numpy.concatenate((self.states, other.states))
+            return self.__class__(arg)
+        else:
+            return NotImplemented
 
     @property
     def trafo(self):
@@ -191,20 +203,17 @@ class CoherentBasis(basis.Basis):
         Calculate the coordinates of a vector given in the dual basis.
         """
         return numpy.dot(psi, self.inv_trafo.T)
-        #if psi.cols == 1:
-        #    return mp.cholesky_solve(self.trafo, psi)
-        #r = mp.matrix(psi.rows,psi.cols)
-        #for i in range(psi.cols):
-        #    r[:,i] = self.dual_reverse(psi[:,i])
-        #return r
 
-    def coordinates(self, alpha):
+    def coherent_state(self, alpha, raise_index=False):
         """
         Calculate the coordinates of the given coherent state in this basis.
         """
         from .. import statevector
         b = self.coherent_scalar_product(self.states, alpha)
-        return statevector.StateVector(self.inverse_dual(b), basis=self)
+        if raise_index:
+            sv = statevector.StateVector(self.inverse_dual(b), basis=self)
+        else:
+            sv = statevector.StateVector(b, basis=self)
 
     def create(self, pow=1, raise_left=False, raise_right=False):
         from ..operators import Operator as op
