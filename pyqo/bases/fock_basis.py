@@ -13,7 +13,7 @@ class FockBasis(basis.ONBasis):
     N1 = None
     dtype = None
 
-    def __init__(self, N0, N1=None, dtype=None):
+    def __init__(self, N0, N1=None, dtype=complex):
         if N1 is None:
             self.N0 = 0
             self.N1 = N0
@@ -22,18 +22,27 @@ class FockBasis(basis.ONBasis):
             self.N1 = N1
         self.dtype = dtype
 
-    def basis_vector(self, i):
+    def zero(self):
+        """
+        Create a statevector with only zero entries.
+        """
         from ..statevector import StateVector
+        X = numpy.zeros(self.N1-self.N0, dtype=self.dtype)
+        if X.dtype is numpy.dtype("object"):
+            X[:] = self.dtype(0)
+        return StateVector(X, basis=self, dtype=self.dtype)
+
+    def basis_vector(self, i):
+        """
+        Create a statevector where only the i-th fock state is 1.
+        """
         assert self.N0 <= i < self.N1
-        if self.dtype is None:
-            X = numpy.zeros(self.N1-self.N0, dtype=complex)
-            X[i-self.N0] = 1
-        else:
-            X = numpy.empty(self.N1-self.N0, dtype=self.dtype)
-            for j in range(0, len(X)):
-                X[j] = self.dtype(0)
+        X = self.zero()
+        if X.dtype is numpy.dtype("object"):
             X[i-self.N0] = self.dtype(1)
-        return StateVector(X, basis=self)
+        else:
+            X[i-self.N0] = 1
+        return X
 
     def identity(self):
         from ..operators import Operator as op
@@ -80,6 +89,32 @@ class FockBasis(basis.ONBasis):
             a = mpmath.exp(-mpmath.norm(alpha)**2/2)
         x = a*x[self.N0:self.N1]
         return sv(x, basis=self)
+
+    def basis_change_func(self, basis):
+        from . import coherent_basis
+        if isinstance(basis, self.__class__):
+            def f(psi):
+                I = (max(basis.N0, self.N0), min(basis.N1, self.N1))
+                X = basis.zero()
+                if I[0] <= I[1]:
+                    X[I[0]-basis.N0:I[1]-basis.N0] = psi[I[0]-self.N0:I[1]-self.N0]
+                return X
+        elif isinstance(basis, coherent_basis.CoherentBasis):
+            import mpmath
+            from .. import ndarray
+            states = basis.states
+            A = numpy.empty((self.N1-self.N0, len(states)), dtype=mpmath.mpc)
+            A = ndarray.Array(A)
+            for i, alpha in enumerate(states):
+                A[:,i] = self.coherent_state(alpha, dtype=mpmath.mpc)
+            A = A.T.conj()
+            A = numpy.dot(basis.inv_trafo, A)
+            return lambda psi:numpy.dot(A, psi)
+        else:
+            raise NotImplementedError()
+
+
+
 
 def coherent_state(alpha, N, dtype=complex):
     from .. import statevector

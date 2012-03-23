@@ -10,7 +10,6 @@ except:
     print("mpmath not found - Calculating coherent bases not possible")
 
 from . import basis
-from . import fock_basis
 from .. import ndarray
 from ..utils import lattice
 
@@ -259,6 +258,7 @@ class CoherentBasis(basis.Basis):
             return op(adag_a, basis=self)
 
     def basis_change_func(self, basis):
+        from . import fock_basis
         if isinstance(basis, CoherentBasis):
             new_states = self.states
             old_states = basis.states
