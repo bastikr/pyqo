@@ -23,26 +23,55 @@ class CoherentBasis(basis.Basis):
     *Arguments*
         * *states*
             A vector of complex numbers defining the basis states.
+        * *is_dual*
+            If False this basis consists of coherent states, otherwise it's
+            the dual basis.
     """
     rank = 1
     states = None
     lattice = None
+    is_dual = None
     _trafo = None
     _inv_trafo = None
 
-    def __init__(self, states):
+    def __init__(self, states, is_dual=False, **args):
         if isinstance(states, lattice.Lattice):
             self.states = ndarray.Array(states.states())
             self.lattice = states
         else:
             self.states = ndarray.Array(states)
+        self.is_dual = is_dual
+        self._trafo =args.get("_trafo", None)
+        self._inv_trafo = args.get("_inv_trafo", None)
 
     def __repr__(self):
         clsname = "%s.%s" % (self.__module__, self.__class__.__name__)
         if self.lattice is None:
-            return "%s(%s)" % (clsname, repr(self.states))
+            return "%s(%s,is_dual=%s)" % (clsname, repr(self.states), self.is_dual)
         else:
-            return "%s(%s)" % (clsname, repr(self.lattice))
+            return "%s(%s,is_dual=%s)" % (clsname, repr(self.lattice), self.is_dual)
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if self.__class__ != other.__class__:
+            return False
+        if self.is_dual != other.is_dual:
+            return False
+        if self.states == other.states:
+            return False
+        return True
+
+    def is_dual_basis(self, other):
+        if self is other:
+            return False
+        if self.__class__ != other.__class__:
+            return False
+        if self.is_dual == other.is_dual:
+            return False
+        if self.states == other.states:
+            return False
+        return True
 
     def __add__(self, other):
         if isinstance(other, CoherentBasis):
@@ -163,99 +192,71 @@ class CoherentBasis(basis.Basis):
             return r.reshape(-1)
         else:
             return r
-        """
-        is_matrix = False
-        if isinstance(alpha, mpmath.matrix):
-            rows = max((alpha.rows,alpha.cols))
-            is_matrix = True
-        else:
-            alpha = mpmath.matrix([alpha])
-            rows = 1
-        if isinstance(beta, mpmath.matrix):
-            cols = max((beta.rows,beta.cols))
-            is_matrix = True
-        else:
-            beta = mpmath.matrix([beta])
-            cols = 1
-        r = mpmath.matrix(rows,cols)
-        for i,j in itertools.product(range(rows),range(cols)):
-            alpha_i = alpha[i]
-            beta_j = beta[j]
-            r[i,j] = mpmath.exp(
-                        -mpmath.mpf(1)/2*(abs(alpha_i)**2 + abs(beta_j)**2)\
-                        + mpmath.conj(alpha_i)*beta_j\
-                        )
-        if is_matrix:
-            return numpy.array(r.tolist())
-        else:
-            return r[0,0]
-        """
 
-    def dual(self, psi):
+    def dual_basis(self):
+        """
+        Calculate the dual basis.
+        """
+        if self.lattice is None:
+            states = self.states
+        else:
+            states = self.lattice.copy()
+        return self.__class__(states, is_dual=not self.is_dual,
+                              _trafo=self._trafo, _inv_trafo=self._inv_trafo)
+
+    def to_dualbasis_coordinates(self, array):
         """
         Calculate the dual vector of a vector given in this basis.
         """
-        return numpy.dot(psi, self.trafo.T)
+        return numpy.dot(array, self.trafo.T)
 
-    def inverse_dual(self, psi):
+    def to_coherentbasis_coordinates(self, array):
         """
         Calculate the coordinates of a vector given in the dual basis.
         """
-        return numpy.dot(psi, self.inv_trafo.T)
+        return numpy.dot(array, self.inv_trafo.T)
 
-    def coherent_state(self, alpha, raise_index=False):
+    def coherent_state(self, alpha):
         """
         Calculate the coordinates of the given coherent state in this basis.
         """
         from .. import statevector
         b = self.coherent_scalar_product(self.states, alpha)
-        if raise_index:
-            sv = statevector.StateVector(self.inverse_dual(b), basis=self)
+        if self.is_dual:
+            sv = statevector.StateVector(self.to_dualbasis_coordinates(b), basis=self)
         else:
             sv = statevector.StateVector(b, basis=self)
         return sv
 
-    def create(self, pow=1, raise_left=False, raise_right=False):
+    def create(self, pow=1):
         from ..operators import Operator as op
         # down-up version
         alpha = self.states.conj()**pow
-        if raise_left and raise_right:
-            return op(self.inv_trafo*alpha, basis=self)
-        elif raise_left and not raise_right:
-            return op(numpy.dot(self.inv_trafo*alpha, self.trafo), basis=self)
-        elif not raise_left and raise_right:
-            return op(numpy.diag(alpha), basis=self)
-        elif not raise_left and not raise_right:
+        if self.is_dual:
             return op(a_dag.reshape((-1,1))*self.trafo, basis=self)
+        else:
+            return op(self.inv_trafo*alpha, basis=self)
 
     def destroy(self, pow=1, raise_left=False, raise_right=False):
         from ..operators import Operator as op
         # up-down version
         alpha = self.states**pow
-        if raise_left and raise_right:
-            return op(alpha.reshape((-1,1))*self.inv_trafo, basis=self)
-        elif raise_left and not raise_right:
-            return op(numpy.diag(alpha), basis=self)
-        elif not raise_left and raise_right:
-            return op(numpy.dot(self.trafo*alpha, self.inv_trafo), basis=self)
-        elif not raise_left and not raise_right:
+        if self.is_dual:
             return op(self.trafo*alpha, basis=self)
+        else:
+            return op(alpha.reshape((-1,1))*self.inv_trafo, basis=self)
 
-    def create_destroy(self, pow1=1, pow2=1, raise_left=False, raise_right=False):
+    def create_destroy(self, pow1=1, pow2=1):
         from ..operators import Operator as op
         # down-down versions
         alpha1 = self.states.conj()**pow1
         alpha2 = self.states**pow2
         adag_a = alpha1.reshape((-1,1))*self.trafo*alpha2
-        if raise_left and raise_right:
+        if self.is_dual:
+            return op(adag_a, basis=self)
+        else:
             return op(numpy.dot(numpy.dot(self.inv_trafo, adag_a), self.inv_trafo),
                       basis=self)
-        elif raise_left and not raise_right:
-            return op(numpy.dot(self.inv_trafo, adag_a), basis=self)
-        elif not raise_left and raise_right:
-            return op(numpy.dot(adag_a, self.inv_trafo), basis=self)
-        elif not raise_left and not raise_right:
-            return op(adag_a, basis=self)
 
     def basis_change_func(self, basis):
         from . import fock_basis
