@@ -58,7 +58,7 @@ class StateVector(ndarray.Array):
         if self.basis is None:
             return self
         else:
-            return self.basis.dual(self)
+            return self.basis.dual_state(self)
 
     def inverse_dual(self):
         if self.basis is None:

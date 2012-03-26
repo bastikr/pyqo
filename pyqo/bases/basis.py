@@ -8,10 +8,7 @@ class Basis:
         assert rank > 0
         self.rank = rank
 
-    def dual(self, psi):
-        return NotImplementedError()
-
-    def inverse_dual(self, psi):
+    def dual_state(self, psi):
         return NotImplementedError()
 
     def ptarce(self, indices):
@@ -19,7 +16,7 @@ class Basis:
 
     def scalar_product(self, psi1, psi2):
         assert psi1.shape == psi2.shape
-        return numpy.tensordot(self.dual(psi1).conj(), psi2, psi1.ndim)
+        return numpy.tensordot(self.dual_state(psi1).conj(), psi2, psi1.ndim)
 
     def norm(self, psi):
         return numpy.sqrt(numpy.abs(self.scalar_product(psi, psi)))

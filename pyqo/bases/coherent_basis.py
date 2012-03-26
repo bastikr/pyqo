@@ -200,17 +200,9 @@ class CoherentBasis(basis.Basis):
                               ket_is_dual= ket^self.ket_is_dual,
                               _trafo=self._trafo, _inv_trafo=self._inv_trafo)
 
-    def to_dualbasis_coordinates(self, array):
-        """
-        Calculate the dual vector of a vector given in this basis.
-        """
-        return numpy.dot(array, self.trafo.T)
-
-    def to_coherentbasis_coordinates(self, array):
-        """
-        Calculate the coordinates of a vector given in the dual basis.
-        """
-        return numpy.dot(array, self.inv_trafo.T)
+    def dual_state(self, psi, bra=True, ket=True):
+        dual_basis = self.dual_basis(bra=bra, ket=ket)
+        return psi.change_basis(dual_basis)
 
     def coherent_state(self, alpha):
         """
@@ -219,7 +211,7 @@ class CoherentBasis(basis.Basis):
         from ..statevector import StateVector
         b = self.coherent_scalar_product(self.states, alpha)
         if self.ket_is_dual:
-            sv = StateVector(self.to_dualbasis_coordinates(b), basis=self)
+            sv = StateVector(numpy.dot(self.trafo, b), basis=self)
         else:
             sv = StateVector(b, basis=self)
         return sv
@@ -231,9 +223,9 @@ class CoherentBasis(basis.Basis):
         dbra, dket = self.bra_is_dual, self.ket_is_dual
         if not dbra and not dket:
             array = self.inv_trafo*alpha
-        elif not dbra and dket:
-            array = numpy.dot(self.inv_trafo*alpha, self.trafo)
         elif dbra and not dket:
+            array = numpy.dot(self.inv_trafo*alpha, self.trafo)
+        elif not dbra and dket:
             array = numpy.diag(alpha)
         elif dbra and dket:
             array = a_dag.reshape((-1,1))*self.trafo
@@ -248,9 +240,9 @@ class CoherentBasis(basis.Basis):
         dbra, dket = self.bra_is_dual, self.ket_is_dual
         if not dbra and not dket:
             array = alpha.reshape((-1,1))*self.inv_trafo
-        elif not dbra and dket:
-            array = numpy.diag(alpha)
         elif dbra and not dket:
+            array = numpy.diag(alpha)
+        elif not dbra and dket:
             array = numpy.dot(self.trafo*alpha, self.inv_trafo)
         elif dbra and dket:
             array = self.trafo*alpha
@@ -267,9 +259,9 @@ class CoherentBasis(basis.Basis):
         dbra, dket = self.bra_is_dual, self.ket_is_dual
         if not dbra and not dket:
             array = numpy.dot(numpy.dot(self.inv_trafo, adag_a), self.inv_trafo)
-        elif not dbra and dket:
-            array = numpy.dot(self.inv_trafo, adag_a)
         elif dbra and not dket:
+            array = numpy.dot(self.inv_trafo, adag_a)
+        elif not dbra and dket:
             array = numpy.dot(adag_a, self.inv_trafo)
         elif dbra and dket:
             array = adag_a
