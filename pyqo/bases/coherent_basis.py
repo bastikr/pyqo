@@ -299,4 +299,18 @@ class CoherentBasis(basis.Basis):
         else:
             raise NotImplementedError()
 
+def find_coherent_basis(psi, N, lattice):
+    from ..operators import qfunc
+    l = lattice.copy()
+    N_max = int(psi.basis.N1**2/l.d**2) + 1
+    l.select_nearestN(0, N_max)
+    states = l.states()
+    Q = qfunc(psi, states)
+    srt = Q.argsort()
+    selection = []
+    for i in srt[::-1][:N]:
+        selection.append(l.selected[i])
+    l = lattice.copy()
+    l.select_sequence(selection)
+    return CoherentBasis(l)
 
