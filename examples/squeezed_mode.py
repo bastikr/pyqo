@@ -14,7 +14,7 @@ mu = 0.35
 kappa = 1
 
 # Choose initial coherent basis and state
-basis = qo.bases.NumberBasis(0, N)
+basis = qo.bases.FockBasis(0, N)
 psi_0 = basis.basis_vector(0)
 
 # Define Hamiltonian and jump operator
@@ -23,15 +23,15 @@ H = mu*(basis.create(2) + basis.destroy(2))
 J = [kappa*a]
 
 # Solve master equation
-T = np.linspace(0, 5, 5)
-psi_t = qo.solve_mc(H, psi_0, T, J, trajectories=10).DO
-#psi_t = qo.solve_mc_single(H, psi_0, T, J)
+T = np.linspace(0, 1, 3)
+#psi_t = qo.solve_mc(H, psi_0, T, J, trajectories=10).DO
+psi_t = qo.solve_mc_single(H, psi_0, T, J)
 #psi_t = qo.solve_master(H, psi_0, T, J)
 
 # Visualization
 exp_a = []
 
-X,Y = np.meshgrid(np.linspace(-7,7), np.linspace(-7,7))
+X,Y = np.meshgrid(np.linspace(-7,7,20), np.linspace(-7,7,20))
 log = np.vectorize(mp.log)
 
 #"""
@@ -48,11 +48,10 @@ for psi  in psi_t:
 
     # Basis states
     pylab.imshow(Q_numpy, origin="lower", extent=(-7,7,-7,7))
-    pylab.contour(X,Y,Q)
+    pylab.contour(X,Y,Q_numpy)
     i += 1
-    pylab.savefig("presentation/reduced_parametric_oscillator/%s.png" % i, dpi=300)
+    #pylab.savefig("presentation/reduced_parametric_oscillator/%s.png" % i, dpi=300)
     #pylab.plot(exp_a_numpy.real, exp_a_numpy.imag)
-    print()
 #"""
 
 

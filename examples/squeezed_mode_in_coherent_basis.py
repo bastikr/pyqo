@@ -5,7 +5,7 @@ import mpmath as mp
 import pylab
 
 # 128
-mp.mp.dps = 128
+mp.mp.dps = 24
 
 # Parameter of system
 # (1.2, 1.4)
@@ -15,30 +15,36 @@ kappa = mp.mpf("1.5")
 # Choose initial coherent basis and state
 # (0, 1.5, 4)
 # (0, 1.6, 3)
-basis = qo.bases.CoherentBasis.create_hexagonal_grid_nearestN(0, 1.7, 0, 19)
-psi_0 = basis.coordinates(mp.mpf("0"))
+basis = qo.bases.CoherentBasis.create_hexagonal_grid_nearestN(0, 1.7, 0, 25)
+basis = basis.dual_basis(bra=True, ket=False)
+psi_0 = basis.coherent_state(mp.mpf("0"))
 
 # Define Hamiltonian (dependent on basis)
 def create_H(t, basis):
-    adag = basis.create(2, True, False)
-    a = basis.destroy(2, True, False)
+    adag = basis.create(2)
+    a = basis.destroy(2)
     return mu*(adag+a)
 
 def create_J(t, basis):
-    return [kappa*basis.destroy(1, True, False)]
+    return [kappa*basis.destroy()]
+
 
 # Hamiltonian for initial basis
 H_0 = create_H(0, basis)
 J_0 = create_J(0, basis)
+
+print(psi_0)
+print(H_0)
+print(J_0[0])
 
 # Adaptivity manager (governs evolution of basis)
 AM = qo.adaptive.AM_Coherent(create_H, create_J)
 
 # Solve master equation
 # (0, 0.5, 11)
-T = np.linspace(0, 0.7, 15)
-psi_t = qo.solve_mc_single(H_0, psi_0, T, J_0, adapt=AM)
-#psi_t = qo.solve_mc_single(H_0, psi_0, T, J_0)
+T = np.linspace(0, 0.3, 5)
+#psi_t = qo.solve_mc_single(H_0, psi_0, T, J_0, adapt=AM)
+psi_t = qo.solve_mc_single(H_0, psi_0, T, J_0)
 
 # Visualization
 exp_a = []
