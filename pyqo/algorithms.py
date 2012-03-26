@@ -417,7 +417,7 @@ def rk4(f, y0, t, h):
 def integrate_mp(H_nH, psi, dt):
     def f(t, y):
         return -1j*H_nH*y
-    return rungekutta.RK2_3(mpmath.mpf).integrate(f, psi, (0,dt), rtol=1e-8, atol=1e-8)[-1]
+    return rungekutta.RK4_5(mpmath.mpf).integrate(f, psi, (0,dt), rtol=1e-6, atol=1e-6)[-1]
 
 def integrate(H_nH, psi, dt):
     if mpmath is not None and isinstance(psi.flat[0], (mpmath.mpc, mpmath.mpf)):
