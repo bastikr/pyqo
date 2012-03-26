@@ -95,7 +95,7 @@ class AM_Coherent(adaptive.AdaptivityManager):
                 lattice.select(subs[i])
             else:
                 lattice.select(i)
-        basis = coherent_basis.CoherentBasis(lattice)
+        basis = coherent_basis.CoherentBasis(lattice, bra=True, ket=False)
         return basis, t_min, t_max
 
     def adapt_operators(self, t, basis):
