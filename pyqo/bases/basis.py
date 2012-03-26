@@ -67,11 +67,8 @@ class CompositeBasis(Basis):
             rank_pos += b.rank
         return d
 
-    def dual(self, psi):
-        return self.apply(psi, lambda basis, slice: basis.dual(slice))
-
-    def inverse_dual(self, psi):
-        return self.apply(psi, lambda basis, slice: basis.inverse_dual(slice))
+    def dual_state(self, psi):
+        return self.apply(psi, lambda basis, slice: basis.dual_state(slice))
 
     def ptrace(self, indices):
         if isinstance(indices, int):
@@ -102,10 +99,7 @@ class CompositeBasis(Basis):
 
 
 class ONBasis(Basis):
-    def dual(self, psi):
-        return psi
-
-    def inverse_dual(self, psi):
+    def dual_state(self, psi):
         return psi
 
 
