@@ -30,44 +30,39 @@ class CoherentBasis(basis.Basis):
     rank = 1
     states = None
     lattice = None
-    is_dual = None
+    bra_is_dual = None
+    ket_is_dual = None
     _trafo = None
     _inv_trafo = None
 
-    def __init__(self, states, is_dual=False, **args):
+    def __init__(self, states, ket_is_dual=False, bra_is_dual=False, **args):
         if isinstance(states, lattice.Lattice):
             self.states = ndarray.Array(states.states())
             self.lattice = states
         else:
             self.states = ndarray.Array(states)
-        self.is_dual = is_dual
-        self._trafo =args.get("_trafo", None)
+        self.bra_is_dual = bra_is_dual
+        self.ket_is_dual = ket_is_dual
+        self._trafo = args.get("_trafo", None)
         self._inv_trafo = args.get("_inv_trafo", None)
 
     def __repr__(self):
-        clsname = "%s.%s" % (self.__module__, self.__class__.__name__)
+        name = "%s.%s" % (self.__module__, self.__class__.__name__)
         if self.lattice is None:
-            return "%s(%s,is_dual=%s)" % (clsname, repr(self.states), self.is_dual)
+            states = repr(self.states)
         else:
-            return "%s(%s,is_dual=%s)" % (clsname, repr(self.lattice), self.is_dual)
+            states = repr(self.lattice)
+        return "%s(%s, bra_is_dual=%s, ket_is_dual=%s)" %\
+                    (name, states, self.bra_is_dual, self.ket_is_dual)
 
     def __eq__(self, other):
         if self is other:
             return True
         if self.__class__ != other.__class__:
             return False
-        if self.is_dual != other.is_dual:
+        if self.bra_is_dual != other.bra_is_dual:
             return False
-        if self.states == other.states:
-            return False
-        return True
-
-    def is_dual_basis(self, other):
-        if self is other:
-            return False
-        if self.__class__ != other.__class__:
-            return False
-        if self.is_dual == other.is_dual:
+        if self.ket_is_dual != other.ket_is_dual:
             return False
         if self.states == other.states:
             return False
@@ -193,7 +188,7 @@ class CoherentBasis(basis.Basis):
         else:
             return r
 
-    def dual_basis(self):
+    def dual_basis(self, bra=True, ket=True):
         """
         Calculate the dual basis.
         """
@@ -201,7 +196,8 @@ class CoherentBasis(basis.Basis):
             states = self.states
         else:
             states = self.lattice.copy()
-        return self.__class__(states, is_dual=not self.is_dual,
+        return self.__class__(states, bra_is_dual=bra^self.bra_is_dual,
+                              ket_is_dual= ket^self.ket_is_dual,
                               _trafo=self._trafo, _inv_trafo=self._inv_trafo)
 
     def to_dualbasis_coordinates(self, array):
@@ -220,31 +216,47 @@ class CoherentBasis(basis.Basis):
         """
         Calculate the coordinates of the given coherent state in this basis.
         """
-        from .. import statevector
+        from ..statevector import StateVector
         b = self.coherent_scalar_product(self.states, alpha)
-        if self.is_dual:
-            sv = statevector.StateVector(self.to_dualbasis_coordinates(b), basis=self)
+        if self.ket_is_dual:
+            sv = StateVector(self.to_dualbasis_coordinates(b), basis=self)
         else:
-            sv = statevector.StateVector(b, basis=self)
+            sv = StateVector(b, basis=self)
         return sv
 
     def create(self, pow=1):
         from ..operators import Operator as op
         # down-up version
         alpha = self.states.conj()**pow
-        if self.is_dual:
-            return op(a_dag.reshape((-1,1))*self.trafo, basis=self)
+        dbra, dket = self.bra_is_dual, self.ket_is_dual
+        if not dbra and not dket:
+            array = self.inv_trafo*alpha
+        elif not dbra and dket:
+            array = numpy.dot(self.inv_trafo*alpha, self.trafo)
+        elif dbra and not dket:
+            array = numpy.diag(alpha)
+        elif dbra and dket:
+            array = a_dag.reshape((-1,1))*self.trafo
         else:
-            return op(self.inv_trafo*alpha, basis=self)
+            assert False
+        return op(array, basis=self)
 
-    def destroy(self, pow=1, raise_left=False, raise_right=False):
+    def destroy(self, pow=1):
         from ..operators import Operator as op
         # up-down version
         alpha = self.states**pow
-        if self.is_dual:
-            return op(self.trafo*alpha, basis=self)
+        dbra, dket = self.bra_is_dual, self.ket_is_dual
+        if not dbra and not dket:
+            array = alpha.reshape((-1,1))*self.inv_trafo
+        elif not dbra and dket:
+            array = numpy.diag(alpha)
+        elif dbra and not dket:
+            array = numpy.dot(self.trafo*alpha, self.inv_trafo)
+        elif dbra and dket:
+            array = self.trafo*alpha
         else:
-            return op(alpha.reshape((-1,1))*self.inv_trafo, basis=self)
+            assert False
+        return op(array, basis=self)
 
     def create_destroy(self, pow1=1, pow2=1):
         from ..operators import Operator as op
@@ -252,26 +264,46 @@ class CoherentBasis(basis.Basis):
         alpha1 = self.states.conj()**pow1
         alpha2 = self.states**pow2
         adag_a = alpha1.reshape((-1,1))*self.trafo*alpha2
-        if self.is_dual:
-            return op(adag_a, basis=self)
+        dbra, dket = self.bra_is_dual, self.ket_is_dual
+        if not dbra and not dket:
+            array = numpy.dot(numpy.dot(self.inv_trafo, adag_a), self.inv_trafo)
+        elif not dbra and dket:
+            array = numpy.dot(self.inv_trafo, adag_a)
+        elif dbra and not dket:
+            array = numpy.dot(adag_a, self.inv_trafo)
+        elif dbra and dket:
+            array = adag_a
         else:
-            return op(numpy.dot(numpy.dot(self.inv_trafo, adag_a), self.inv_trafo),
-                      basis=self)
+            assert False
+        return op(array, basis=self)
 
     def basis_change_func(self, basis):
+        # TODO: Improve this function.
         from . import fock_basis
         if isinstance(basis, CoherentBasis):
-            new_states = self.states
-            old_states = basis.states
+            def f1(psi):
+                if self.ket_is_dual:
+                    return numpy.dot(self.inv_trafo, psi)
+                return psi
+            def f2(psi):
+                if not basis.ket_is_dual:
+                    return numpy.dot(basis.inv_trafo, psi)
+                return psi
+            new_states = basis.states
+            old_states = self.states
             T = CoherentBasis.coherent_scalar_product(new_states, old_states)
-            inv_trafo = self.inv_trafo
-            return lambda psi:numpy.dot(inv_trafo, numpy.dot(T, psi))
+            return lambda psi:f2(numpy.dot(T, f1(psi)))
         elif isinstance(basis, fock_basis.FockBasis):
             states = self.states
             A = numpy.empty((basis.N1-basis.N0, len(states)), dtype=mpmath.mpc)
             for i, alpha in enumerate(states):
                 A[:,i] = basis.coherent_state(alpha, dtype=mpmath.mpc)
-            return lambda psi:numpy.dot(A, psi)
+            def f1(psi):
+                if self.ket_is_dual:
+                    return numpy.dot(self.inv_trafo, psi)
+                else:
+                    psi
+            return lambda psi:numpy.dot(A, f1(psi))
         else:
             raise NotImplementedError()
 
