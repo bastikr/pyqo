@@ -64,7 +64,7 @@ class CoherentBasis(basis.Basis):
             return False
         if self.ket_is_dual != other.ket_is_dual:
             return False
-        if self.states == other.states:
+        if (self.states != other.states).any():
             return False
         return True
 
@@ -278,7 +278,7 @@ class CoherentBasis(basis.Basis):
                     return numpy.dot(self.inv_trafo, psi)
                 return psi
             def f2(psi):
-                if not basis.ket_is_dual:
+                if basis.ket_is_dual:
                     return numpy.dot(basis.inv_trafo, psi)
                 return psi
             new_states = basis.states
