@@ -4,22 +4,23 @@ import numpy as np
 import mpmath as mp
 import pylab
 
-mp.mp.dps = 32
+mp.mp.dps = 64
 
 # Parameter of system
 omega = mp.mpf("1")
 eta = mp.mpf("0.2")
 
 # Choose initial coherent basis and state
-basis = qo.bases.CoherentBasis.create_hexagonal_grid(2, 1.4, 3)
-psi_0 = basis.coordinates(mp.mpf("2.1"))
+basis = qo.bases.CoherentBasis.create_hexagonal_grid_rings(2, 1.3, 3)
+basis = basis.dual_basis(bra=True, ket=False)
+psi_0 = basis.coherent_state(mp.mpf("2.1"))
 
 # Define Hamiltonian (dependent on basis)
 def create_H(t, basis):
-    return omega*basis.create_destroy(1, 1, True, False)
+    return omega*basis.create_destroy(1,1)
 
 def create_J(t, basis):
-    return [eta*basis.destroy(1, True, False)]
+    return [eta*basis.destroy()]
 
 # Hamiltonian for initial basis
 H_0 = create_H(0, basis)
@@ -30,6 +31,7 @@ AM = qo.adaptive.AM_Coherent(create_H, create_J)
 
 # Solve master equation
 T = np.linspace(0, np.pi/2, 6)
+#T = np.linspace(0, 0.2, 6)
 psi_t = qo.solve_mc_single(H_0, psi_0, T, J_0, adapt=AM)
 
 # Visualization
@@ -42,7 +44,7 @@ for i, psi in enumerate(psi_t):
     pylab.subplot(2,3,i+1)
     b = psi.basis
     # Calculate <a>
-    a = qo.Operator(b.trafo * b.states, basis=b)
+    a = psi.basis.destroy()
     exp_a.append(qo.expect(a, psi))
     exp_a_numpy = np.array(exp_a, dtype=complex)
 
