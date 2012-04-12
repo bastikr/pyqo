@@ -12,6 +12,9 @@ def load(path, namespace=None):
     f.close()
     ns = {"pyqo": pyqo}
     ns.update(numpy.__dict__)
+    if "mpc" in buf:
+        import mpmath
+        ns.update(mpmath.__dict__)
     if namespace is not None:
         ns.update(namespace)
     return eval(buf, ns)
