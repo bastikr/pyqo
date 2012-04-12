@@ -89,13 +89,13 @@ class AM_Coherent(adaptive.AdaptivityManager):
         # Create new lattice consisting of states with highest values of
         # Q-function.
         new_lattice = psi.basis.lattice.copy()
-        lattice.clear_selection()
+        new_lattice.clear_selection()
         for i in ind0:
             if i in subs:
-                lattice.select(subs[i])
+                new_lattice.select(subs[i])
             else:
-                lattice.select(i)
-        basis = coherent_basis.CoherentBasis(lattice, bra_is_dual=True, ket_is_dual=False)
+                new_lattice.select(i)
+        basis = coherent_basis.CoherentBasis(new_lattice, bra_is_dual=True, ket_is_dual=False)
         return basis, t_min, t_max
 
     def adapt_operators(self, t, basis):
