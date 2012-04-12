@@ -463,11 +463,11 @@ def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-
             # non hermitian time evolution
             if state.H_nH is None:
                 state.H_nH = calculate_H_nH(state.H, state.J)
-            try:
-                state.psi = integrate(state.H_nH, state.psi, next_t - state.t)
-            except:
-                print("Integration aborted.")
-                return results
+            #try:
+            state.psi = integrate(state.H_nH, state.psi, next_t - state.t)
+            #except:
+            #    print("Integration aborted.")
+            #    return results
         state.psi.renorm()
         state.t_last = state.t
         state.t = next_t
