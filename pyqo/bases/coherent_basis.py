@@ -211,9 +211,9 @@ class CoherentBasis(basis.Basis):
         from ..statevector import StateVector
         b = self.coherent_scalar_product(self.states, alpha)
         if self.ket_is_dual:
-            sv = StateVector(numpy.dot(self.trafo, b), basis=self)
-        else:
             sv = StateVector(b, basis=self)
+        else:
+            sv = StateVector(numpy.dot(b, self.inv_trafo.T), basis=self)
         return sv
 
     def create(self, pow=1):
@@ -278,7 +278,7 @@ class CoherentBasis(basis.Basis):
                     return numpy.dot(self.inv_trafo, psi)
                 return psi
             def f2(psi):
-                if basis.ket_is_dual:
+                if not basis.ket_is_dual:
                     return numpy.dot(basis.inv_trafo, psi)
                 return psi
             new_states = basis.states
