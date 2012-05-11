@@ -47,7 +47,7 @@ class FockBasis(basis.ONBasis):
     def identity(self):
         from ..operators import Operator as op
         N = self.N1-self.N0
-        if self.dtype is None:
+        if self.dtype is complex:
             X = numpy.eye(N)
         else:
             X = numpy.array(list(self.dtype(1))*N)
@@ -56,7 +56,7 @@ class FockBasis(basis.ONBasis):
 
     def number(self):
         from ..operators import Operator as op
-        if self.dtype is None:
+        if self.dtype is complex:
             X = numpy.arange(self.N0, self.N1)
         else:
             X = numpy.array(list(self.dtype(i) for i in range(self.N0,self.N1)))
@@ -66,7 +66,7 @@ class FockBasis(basis.ONBasis):
         from ..operators import Operator as op
         N0 = self.N0 + pow
         N1 = self.N1
-        if self.dtype is None:
+        if self.dtype is complex:
             X = numpy.arange(N0, N1)
         else:
             X = numpy.array(list(self.dtype(i) for i in range(N0,N1)))
