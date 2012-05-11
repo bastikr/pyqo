@@ -120,15 +120,19 @@ def solve_es(H, psi, T, J=None):
             raise ValueError("Psi has uncompatible dimensionality.")
 
 def calculate_H_nH(H, J):
+    import bases
     if J is None:
         return H
     N = 0
     for j in J:
-        b = j.basis
-        j_ = numpy.dot(j.T, b.trafo.T).T
-        jdag_ = j_.H
-        jdag = numpy.dot(jdag_.T, b.inv_trafo.T).T
-        N += jdag * j
+        if isinstance(j.basis, bases.CoherentBasis):
+            b = j.basis
+            j_ = numpy.dot(j.T, b.trafo.T).T
+            jdag_ = j_.H
+            jdag = numpy.dot(jdag_.T, b.inv_trafo.T).T
+            N += jdag*j
+        else:
+            N += j.H * j
     return H - 1j*N/2
 
 
@@ -430,7 +434,7 @@ def integrate(H_nH, psi, dt):
     psi_ = as_vector(psi)
     def f(t, y):
         return -1j*numpy.dot(H_nH_, y)
-    integrator = scipy.integrate.ode(f).set_integrator('zvode')
+    integrator = scipy.integrate.ode(f).set_integrator('zvode', nsteps=10000)
     integrator.set_initial_value(psi_, 0)
     integrator.integrate(dt)
     if not integrator.successful():
