@@ -120,6 +120,7 @@ def solve_es(H, psi, T, J=None):
             raise ValueError("Psi has uncompatible dimensionality.")
 
 def calculate_H_nH(H, J):
+    import bases
     if J is None:
         return H
     N = 0
@@ -221,7 +222,8 @@ def integrate_master(H_nH, rho, dt, J):
         for j in J:
             result += j*y*j.H
         return result
-    return rungekutta.RK2_3(mpmath.mpf).integrate(f, rho, (0,dt), rtol=1e-6, atol=1e-6)[-1]
+    dtype = mpmath.mpf if rho.dtype==mpmath.mpf else float
+    return rungekutta.RK4_5(dtype).integrate(f, rho, (0,dt), rtol=1e-6, atol=1e-6)[-1]
 
 def solve_master(H, rho, T, J=None, adapt=None, time_manager=None):
     if isinstance(rho, statevector.StateVector):
@@ -426,7 +428,7 @@ def integrate(H_nH, psi, dt):
     psi_ = as_vector(psi)
     def f(t, y):
         return -1j*numpy.dot(H_nH_, y)
-    integrator = scipy.integrate.ode(f).set_integrator('zvode')
+    integrator = scipy.integrate.ode(f).set_integrator('zvode', nsteps=10000)
     integrator.set_initial_value(psi_, 0)
     integrator.integrate(dt)
     if not integrator.successful():
@@ -471,7 +473,7 @@ def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-
         state.psi.renorm()
         state.t_last = state.t
         state.t = next_t
-        print(state.t)
+        #print(state.t)
     return results
 
 class Ensemble(list):
