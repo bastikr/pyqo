@@ -124,11 +124,7 @@ def calculate_H_nH(H, J):
         return H
     N = 0
     for j in J:
-        b = j.basis
-        j_ = numpy.dot(j.T, b.trafo.T).T
-        jdag_ = j_.H
-        jdag = numpy.dot(jdag_.T, b.inv_trafo.T).T
-        N += jdag * j
+        N += j.dagger() * j
     return H - 1j*N/2
 
 

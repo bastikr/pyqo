@@ -78,6 +78,12 @@ class Operator(ndarray.Array, BaseOperator):
     def H(self):
         return self.T.conj()
 
+    def dagger(self):
+        if self.basis is None:
+            return self.H
+        else:
+            return self.basis.dagger(self)
+
     def ptrace(self, indices):
         if isinstance(indices, int):
             indices = (indices,)

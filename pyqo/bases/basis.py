@@ -21,6 +21,9 @@ class Basis:
     def norm(self, psi):
         return numpy.sqrt(numpy.abs(self.scalar_product(psi, psi)))
 
+    def dagger(self, op):
+        return op.H
+
     def ptrace(self, indices):
         if isinstance(indices, int):
             indices = (indices,)
@@ -54,6 +57,12 @@ class CompositeBasis(Basis):
             rank += b.rank
         Basis.__init__(self, rank=rank)
         self.bases = bases
+
+    def is_ON(self):
+        for b in self.bases:
+            if not isinstance(b, ONBasis):
+                return False
+        return True
 
     def apply(self, psi, func):
         d = psi.copy()
@@ -96,6 +105,13 @@ class CompositeBasis(Basis):
             return all(self.bases[i]==other.bases[i] for i in range(l))
         else:
             return False
+
+    def dagger(self, op):
+        if self.is_ON():
+            return op.H
+        else:
+            raise NotImplementedError()
+
 
 
 class ONBasis(Basis):

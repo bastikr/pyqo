@@ -216,6 +216,10 @@ class CoherentBasis(basis.Basis):
             sv = StateVector(numpy.dot(b, self.inv_trafo.T), basis=self)
         return sv
 
+    def dagger(self, op):
+        op_ = numpy.dot(op.T, self.trafo.T)
+        return numpy.dot(op_.H, self.inv_trafo.T).T
+
     def create(self, pow=1):
         from ..operators import Operator as op
         # down-up version

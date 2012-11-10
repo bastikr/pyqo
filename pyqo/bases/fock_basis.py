@@ -50,7 +50,7 @@ class FockBasis(basis.ONBasis):
         if self.dtype is None:
             X = numpy.eye(N)
         else:
-            X = numpy.array(list(self.dtype(1))*N)
+            X = numpy.array([self.dtype(1)]*N)
             X = numpy.diag(X)
         return op(X, basis=self)
 
