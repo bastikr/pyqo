@@ -81,19 +81,39 @@ class ExponentialSeries:
             psit = numpy.dot(U, psit_)
             return state.__class__(psit.reshape(state.shape))
 
-def steady(H, J=None):
-    if J:
-        L = as_matrix(operators.liouvillian(H, J))
-        w, U = scipy.linalg.eig(L)
-        U_0 = U[:,w.argmin()]
-        return operators.Operator(U_0.reshape(H.shape))
-        #y = numpy.linalg.solve(L, numpy.zeros(L.shape[0]))
-        #return operators.Operator(y.reshape(H.shape))
-    else:
-        H_ = as_matrix(H)
-        y = numpy.linalg.solve(H_, numpy.zeros(H_.shape[0]))
-        rank = H.ndim//2
-        return statevector.StateVector(y.reshape(H.shape[:rank]))
+def steadystate(H, J):
+    L = as_matrix(operators.liouvillian(H,J))
+
+    # Find subspace for which L*x=0
+    U, s, Vh = scipy.linalg.svd(L)
+    r = (numpy.abs(s) < 1e-12).sum()
+    V = Vh.conj().T
+    sigma = tuple(as_matrix(V[:,-r+i]) for i in range(r))
+    # Narrow down subspace to hermitian matrices
+    sigma_herm = []
+    for i in range(r):
+        s = sigma[i]
+        s_H = s.conj().T
+        nonzero_0 = numpy.abs(s) > 1e-12
+        nonzero_1 = numpy.abs(s_H) > 1e-12
+        phi_0 = numpy.mean(numpy.angle(s_H[nonzero_0]/s[nonzero_0])/2)
+        phi_1 = -numpy.mean(numpy.angle(s[nonzero_1]/s_H[nonzero_1])/2)
+        phi = (phi_0+phi_1)/2
+        var = (s_H-numpy.exp(2j*phi)*s).sum()
+        if var<=1e-12:
+            sigma_herm.append(numpy.exp(1j*phi)*s)
+
+    # Further narrow down to positive semidefinite matrices with trace!=0
+    sigma = []
+    for s in sigma_herm:
+        tr = numpy.diag(s).sum()
+        if numpy.abs(tr)<1e-12:
+            continue
+        s /= tr
+        eigs = scipy.linalg.eigvalsh(s)
+        if numpy.all(eigs>-1e-12):
+            sigma.append(s)
+    return sigma
 
 def _as_density_operator(psi, shape):
     if psi.shape == shape:
