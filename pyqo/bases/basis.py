@@ -11,9 +11,6 @@ class Basis:
     def dual_state(self, psi):
         return NotImplementedError()
 
-    def ptarce(self, indices):
-        return NotImplementedError()
-
     def scalar_product(self, psi1, psi2):
         assert psi1.shape == psi2.shape
         return numpy.tensordot(self.dual_state(psi1).conj(), psi2, psi1.ndim)
