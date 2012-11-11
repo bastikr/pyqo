@@ -172,7 +172,7 @@ def identity(x):
     elif isinstance(x, Operator):
         rank = x.ndim
         id = (Operator(numpy.eye(N)) for N in x.shape[:rank//2])
-        return reduce(Operator.tensor,id)
+        return Operator(reduce(Operator.tensor,id), basis=x.basis)
     else:
         raise TypeError("Unsupported argument type.")
 
