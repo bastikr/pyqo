@@ -89,6 +89,7 @@ def steadystate(H, J):
     r = (numpy.abs(s) < 1e-12).sum()
     V = Vh.conj().T
     sigma = tuple(as_matrix(V[:,-r+i]) for i in range(r))
+    #return sigma
     # Narrow down subspace to hermitian matrices
     sigma_herm = []
     for i in range(r):
@@ -105,6 +106,7 @@ def steadystate(H, J):
 
     # Further narrow down to positive semidefinite matrices with trace!=0
     sigma = []
+    discard = []
     for s in sigma_herm:
         tr = numpy.diag(s).sum()
         if numpy.abs(tr)<1e-12:
@@ -113,7 +115,9 @@ def steadystate(H, J):
         eigs = scipy.linalg.eigvalsh(s)
         if numpy.all(eigs>-1e-12):
             sigma.append(s)
-    return sigma
+        else:
+            discard.append(s)
+    return sigma, discard
 
 def _as_density_operator(psi, shape):
     if psi.shape == shape:
