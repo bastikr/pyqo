@@ -229,7 +229,7 @@ def qfunc(state, X, Y=None):
             def Q(a):
                 N = state.shape[0]
                 if state.basis is None:
-                    c = bases.fock_basis.FockBasis(N).coherent_state(a, dtype=type(state[0]))
+                    c = bases.fock_basis.FockBasis(N).coherent_state(a)
                 else:
                     c = state.basis.coherent_state(a)
                 return numpy.abs(numpy.dot(c.conj(), state))**2/numpy.pi
@@ -246,7 +246,7 @@ def qfunc(state, X, Y=None):
             def Q(a):
                 N = state.shape[0]
                 if state.basis is None:
-                    c = bases.fock_basis.FockBasis(N).coherent_state(a, dtype=type(state.flatten()[0]))
+                    c = bases.fock_basis.FockBasis(N).coherent_state(a)
                 else:
                     c = state.basis.coherent_state(a)
                 return numpy.dot(c.conj(), state*c)/numpy.pi
