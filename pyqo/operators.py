@@ -145,6 +145,22 @@ class Operator(ndarray.Array, BaseOperator):
         else:
             return numpy.ndarray.__mul__(self, other)
 
+    def identity(self):
+        if self.basis is None:
+            raise NotImplementedError()
+        else:
+            return self.basis.identity()
+
+    def __pow__(self, other):
+        if not isinstance(other, int):
+            return NotImplemented
+        if other==0:
+            return self.identity()
+        else:
+            op = self
+            for i in range(other-1):
+                op = op * self
+            return op
 
 class DensityOperator(Operator):
     def ptrace_do(self, indices):
@@ -213,7 +229,7 @@ def qfunc(state, X, Y=None):
             def Q(a):
                 N = state.shape[0]
                 if state.basis is None:
-                    c = bases.number_basis.coherent_state(a, N, type(state[0]))
+                    c = bases.fock_basis.FockBasis(N).coherent_state(a, dtype=type(state[0]))
                 else:
                     c = state.basis.coherent_state(a)
                 return numpy.abs(numpy.dot(c.conj(), state))**2/numpy.pi
@@ -230,7 +246,7 @@ def qfunc(state, X, Y=None):
             def Q(a):
                 N = state.shape[0]
                 if state.basis is None:
-                    c = bases.number_basis.coherent_state(a, N, type(state[0]))
+                    c = bases.fock_basis.FockBasis(N).coherent_state(a, dtype=type(state.flatten()[0]))
                 else:
                     c = state.basis.coherent_state(a)
                 return numpy.dot(c.conj(), state*c)/numpy.pi

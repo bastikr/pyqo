@@ -82,7 +82,7 @@ class FockBasis(basis.ONBasis):
         x[0] = dtype("1")
         for n in range(1, self.N1):
             x[n] = x[n-1]*alpha/(n)**(0.5)
-        if isinstance(dtype, complex):
+        if issubclass(dtype, complex):
             a = numpy.exp(-numpy.abs(alpha)**2/2.)
         else:
             import mpmath

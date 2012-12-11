@@ -30,6 +30,13 @@ class Basis:
         else:
             return self.__class__(new_rank)
 
+    def __pow__(self, n):
+        if not isinstance(n, int) or n<1:
+            return NotImplemented
+        if n==1:
+            return self
+        return CompositeBasis((self,)*n)
+
     def __xor__(self, other):
         if not isinstance(other, Basis):
             return NotImplemented
