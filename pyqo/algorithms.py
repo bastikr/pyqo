@@ -117,6 +117,8 @@ def steadystate(H, J):
             sigma.append(s)
         else:
             discard.append(s)
+    sigma = tuple(operators.DensityOperator(s.reshape(H.shape), basis=H.basis)\
+                    for s in sigma)
     return sigma, discard
 
 def _as_density_operator(psi, shape):

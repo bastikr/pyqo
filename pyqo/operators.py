@@ -253,7 +253,7 @@ def qfunc(state, X, Y=None):
                     c = state.basis.coherent_state(a)
                 return numpy.dot(c.conj(), state*c)/numpy.pi
     else:
-        ValueError("The given state has a too high rank.")
+        raise ValueError("The given state has a too high rank.")
     alpha = numpy.array(X) if Y is None else (numpy.array(X) + 1j*numpy.array(Y))
     return Q(alpha)
 
