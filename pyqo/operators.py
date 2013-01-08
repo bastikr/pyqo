@@ -57,13 +57,13 @@ class Operator(ndarray.Array, BaseOperator):
         return d
 
     def dual(self, left=True, right=True):
-        if self.basis is None:
+        if self.basis is None or self.basis.is_ON:
             return self
         else:
             return self._apply(self.basis.dual, left, right)
 
     def inverse_dual(self, left=True, right=True):
-        if self.basis is None:
+        if self.basis is None or self.basis.is_ON:
             return self
         else:
             return self._apply(self.basis.inverse_dual, left, right)
@@ -112,7 +112,7 @@ class Operator(ndarray.Array, BaseOperator):
         perm = R(0,m) + R(rank1, rank1+n) + \
                R(m, rank1) + R(rank1+n,rank1+rank2)
         b = bases.compose_bases(self.basis, rank1, array.basis, rank2)
-        return Operator(numpy.transpose(op, perm), basis=b, copy=False)
+        return self.__class__(numpy.transpose(op, perm), basis=b, copy=False)
 
     __xor__ = tensor
 

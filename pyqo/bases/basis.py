@@ -8,6 +8,9 @@ class Basis:
         assert rank > 0
         self.rank = rank
 
+    def is_ON(self):
+        return False
+
     def dual_state(self, psi):
         return NotImplementedError()
 
@@ -64,7 +67,7 @@ class CompositeBasis(Basis):
 
     def is_ON(self):
         for b in self.bases:
-            if not isinstance(b, ONBasis):
+            if not b.is_ON:
                 return False
         return True
 
@@ -119,6 +122,9 @@ class CompositeBasis(Basis):
 
 
 class ONBasis(Basis):
+    def is_ON(self):
+        return True
+
     def dual_state(self, psi):
         return psi
 
