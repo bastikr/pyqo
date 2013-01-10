@@ -168,7 +168,7 @@ def solve_ode(H, psi, T, J=None):
                 j = as_matrix(j)
                 result += dot(j, dot(y, j.H))
             return as_vector(result)
-        integrator = scipy.integrate.ode(f).set_integrator('zvode')
+        integrator = scipy.integrate.ode(f).set_integrator('zvode', max_step=1e5)
         integrator.set_initial_value(rho_,T[0])
         result = [rho]
         for t in T[1:]:
