@@ -168,7 +168,7 @@ def solve_ode(H, psi, T, J=None):
                 j = as_matrix(j)
                 result += dot(j, dot(y, j.H))
             return as_vector(result)
-        integrator = scipy.integrate.ode(f).set_integrator('zvode', nsteps=1e4)
+        integrator = scipy.integrate.ode(f).set_integrator('zvode', nsteps=1e9)
         integrator.set_initial_value(rho_,T[0])
         result = [rho]
         for t in T[1:]:
@@ -183,7 +183,7 @@ def solve_ode(H, psi, T, J=None):
         psi_ = as_vector(psi)
         def f(t, y):
             return -1j*numpy.dot(H_, y)
-        integrator = scipy.integrate.ode(f).set_integrator('zvode', nsteps=1e4)
+        integrator = scipy.integrate.ode(f).set_integrator('zvode', nsteps=1e9)
         integrator.set_initial_value(psi_,T[0])
         result = [psi]
         t0 = T[0]
@@ -454,7 +454,7 @@ def integrate(H_nH, psi, dt):
     psi_ = as_vector(psi)
     def f(t, y):
         return -1j*numpy.dot(H_nH_, y)
-    integrator = scipy.integrate.ode(f).set_integrator('zvode', nsteps=10000)
+    integrator = scipy.integrate.ode(f).set_integrator('zvode', nsteps=1e9)
     integrator.set_initial_value(psi_, 0)
     integrator.integrate(dt)
     if not integrator.successful():
