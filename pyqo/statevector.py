@@ -137,9 +137,11 @@ class StateVector(ndarray.Array):
             a = (indices,)
         else:
             a = list_functions.sorted_list(indices, True)
+        if len(a)==0:
+            return self
         # statevector.py and operators.py have circular import
         from . import operators
-        dual = self if self.basis is None else self.basis.dual(self)
+        dual = self# if self.basis is None else self.basis.dual(self)
         # This calculates the down up version of rho
         rho_part = numpy.tensordot(self.conj(), dual, (a,a))
         b = None if self.basis is None else self.basis.ptrace(a)

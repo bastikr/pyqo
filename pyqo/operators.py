@@ -89,6 +89,8 @@ class Operator(ndarray.Array, BaseOperator):
             indices = (indices,)
         else:
             indices = list_functions.sorted_list(indices, True)
+        if len(indices)==0:
+            return self
         rank = self.ndim//2
         assert indices[-1] < rank
         mixed = self.inverse_dual(left=True, right=False)
