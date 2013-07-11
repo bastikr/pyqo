@@ -11,6 +11,10 @@ def guess_type(x):
         return float(x)
     except ValueError:
         pass
+    if x.startswith("[") and x.endswith("]"):
+        return list(map(guess_type, x[1:-1].split(",")))
+    if x.startswith("(") and x.endswith(")"):
+        return tuple(map(guess_type, x[1:-1].split(",")))
     return x
 
 def filename2dict(path, types=None):
