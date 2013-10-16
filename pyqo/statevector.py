@@ -143,7 +143,7 @@ class StateVector(ndarray.Array):
         from . import operators
         dual = self# if self.basis is None else self.basis.dual(self)
         # This calculates the down up version of rho
-        rho_part = numpy.tensordot(self.conj(), dual, (a,a))
+        rho_part = numpy.tensordot(dual, self.conj(), (a,a))
         b = None if self.basis is None else self.basis.ptrace(a)
         op = operators.DensityOperator(rho_part, basis=b)
         return op.inverse_dual(left=False, right=True)
