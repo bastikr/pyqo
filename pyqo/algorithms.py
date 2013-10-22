@@ -465,11 +465,12 @@ def integrate(H_nH, psi, dt):
 class Trajectory(list):
     pass
 
-def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-2, seed=0):
+def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-2, seed=0, save_jumptimes=False):
     if time_manager is None:
         time_manager = TimeStepManager()
     T_calculated = [T[0]]
     results = Trajectory([psi.copy()])
+    jumptimes = []
     rand_gen = random.Random(seed)
     state = IntegrationState(T[0], psi, H, J)
     while True:
@@ -485,8 +486,11 @@ def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-
         P = state.jump_probabilities
         if P is not None and rand_number < P[-1]:
             # Quantum Jump
-            state.psi = state.jumps[(P<rand_number).sum()]
+            n = (P<rand_number).sum()
+            state.psi = state.jumps[n]
             state.jumped = True
+            if save_jumptimes:
+                jumptimes.append((state.t, n))
         else:
             # non hermitian time evolution
             if state.H_nH is None:
@@ -500,6 +504,8 @@ def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-
         state.t_last = state.t
         state.t = next_t
         #print(state.t)
+    if save_jumptimes:
+        return results, save_jumptimes
     return results
 
 class Ensemble(list):
