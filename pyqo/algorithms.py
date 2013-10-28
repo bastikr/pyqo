@@ -505,7 +505,7 @@ def solve_mc_single(H, psi, T, J=None, adapt=None, time_manager=None, dp_max=1e-
         state.t = next_t
         #print(state.t)
     if save_jumptimes:
-        return results, save_jumptimes
+        return results, jumptimes
     return results
 
 class Ensemble(list):
