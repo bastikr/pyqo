@@ -1,6 +1,6 @@
 from .statevector import *
 from .operators import *
-from .algorithms import as_vector, as_matrix, expect, steadystate, solve_es, solve_ode, solve_mc_single, solve_mc, solve_master
+from .algorithms import as_vector, as_matrix, expect, steadystate, solve_es, solve_ode, solve_mc_single, solve_mc, solve_master, solve_ode_time_dependent
 from .steady import steadystate
 from .io import save, load
 #from .animation import animate

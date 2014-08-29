@@ -84,6 +84,7 @@ class StateVector(ndarray.Array):
 
     def renorm(self):
         self /= self.norm()
+        return self
 
     def normalize(self):
         r"""

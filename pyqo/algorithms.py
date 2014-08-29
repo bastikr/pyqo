@@ -154,6 +154,33 @@ def calculate_H_nH(H, J):
         N += j.dagger() * j
     return H - 1j*N/2
 
+def solve_ode_time_dependent(f_H, psi, T, f_J=None):
+    if f_J:
+        dot = numpy.dot
+        shape = f_H(0).shape
+        rho = _as_density_operator(psi, shape)
+        rho_ = as_vector(rho)
+        def f(t,y):
+            H = f_H(t)
+            J = f_J(t)
+            H_nH = as_matrix(calculate_H_nH(H,J))
+            y = as_matrix(y)
+            result = -1j*(dot(H_nH, y) - dot(y, H_nH.H))
+            for j in J:
+                j = as_matrix(j)
+                result += dot(j, dot(y, j.H))
+            return as_vector(result)
+        integrator = scipy.integrate.ode(f).set_integrator('zvode', nsteps=1e9)
+        integrator.set_initial_value(rho_,T[0])
+        result = [rho]
+        for t in T[1:]:
+            integrator.integrate(t)
+            if not integrator.successful():
+                raise ValueError("Integration went wrong.")
+            result.append(operators.DensityOperator(integrator.y.reshape(shape), basis=psi.basis))
+        return result
+    else:
+        raise NotImplementedError()
 
 def solve_ode(H, psi, T, J=None):
     if J:
